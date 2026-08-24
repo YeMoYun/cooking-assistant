@@ -1,0 +1,57 @@
+# Dependencies and package-manager logs
+node_modules/
+*.log
+npm-debug.log*
+
+# Generated output
+**/dist/
+**/coverage/
+playwright-report/
+test-results/
+reports/
+
+# Local environment files (only redacted examples may be committed)
+.env*
+!.env.example
+
+# Local databases and SQLite journals
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Runtime copies and temporary uploads
+runtime/
+runtime-copies/
+data/runtime/
+tmp/uploads/
+uploads/tmp/
+data/uploads/tmp/
+
+# Imported source content
+content/raw/**
+!content/raw/.gitkeep
+
+# Playwright artifacts
+**/playwright-report/
+**/test-results/
+**/trace.zip
+**/traces/
+**/screenshots/
+
+# Sensitive local material
+*.key
+secrets.dat
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.sw?
