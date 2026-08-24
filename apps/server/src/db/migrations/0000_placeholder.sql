@@ -1,1 +1,0 @@
--- Placeholder migration retained so the scaffold build can copy migration assets.
