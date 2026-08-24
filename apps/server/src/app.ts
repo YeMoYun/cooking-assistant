@@ -1,0 +1,286 @@
+import fastifyCookie from '@fastify/cookie';
+import fastifyHelmet from '@fastify/helmet';
+import fastifyRateLimit from '@fastify/rate-limit';
+import { AppError } from '@xiaochu/shared';
+import Fastify, {
+  type FastifyInstance,
+  LogController,
+} from 'fastify';
+import { errorHandler } from './plugins/error-handler.js';
+import {
+  DEFAULT_REQUEST_BODY_LIMIT,
+  installRequestSecurity,
+  ROUTE_SECURITY_CONFIGS,
+  type MaintenanceRequestOptions,
+  type RateLimitPolicyName,
+  type RouteRateLimitPolicy,
+} from './plugins/request-security.js';
+import {
+  DEFAULT_SESSION_TTL_MS,
+  MemorySessionStore,
+  SESSION_COOKIE_NAME,
+  type Clock,
+  type RandomBytes,
+} from './plugins/session.js';
+
+export const PRODUCTION_ALLOWED_HOSTS = [
+  'localhost:4173',
+  '127.0.0.1:4173',
+] as const;
+
+export type BootstrapResponse = {
+  csrfToken: string;
+  sessionExpiresAt: string;
+  capabilities: {
+    speechRecognition: 'browser-detect';
+    speechSynthesis: 'browser-detect';
+  };
+};
+
+export interface LoggerStream {
+  write(message: string): void;
+}
+
+export interface BuildAppOptions {
+  readonly allowedHosts?: readonly string[];
+  readonly loggerEnabled?: boolean;
+  readonly loggerStream?: LoggerStream;
+  readonly maintenance?: MaintenanceRequestOptions;
+  readonly now?: Clock;
+  readonly randomBytes?: RandomBytes;
+  readonly rateLimits?: Partial<
+    Readonly<Record<RateLimitPolicyName, RouteRateLimitPolicy>>
+  >;
+  readonly recipeMediaOrigins?: readonly string[];
+  readonly secureCookies?: boolean;
+  readonly sessionTtlMs?: number;
+}
+
+const HTTPS_ORIGIN_PATTERN = /^https:\/\/[^/?#]+\/?$/u;
+
+export const normalizeRecipeMediaOrigins = (
+  origins: readonly string[],
+): readonly string[] => {
+  const normalizedOrigins = new Set<string>();
+
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new TypeError('Invalid recipe media origin');
+    }
+
+    if (
+      !HTTPS_ORIGIN_PATTERN.test(origin)
+      || parsed.protocol !== 'https:'
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+      || parsed.hostname.length === 0
+      || parsed.hostname.includes('*')
+      || parsed.pathname !== '/'
+      || parsed.search.length > 0
+      || parsed.hash.length > 0
+    ) {
+      throw new TypeError('Invalid recipe media origin');
+    }
+
+    normalizedOrigins.add(parsed.origin);
+  }
+
+  return [...normalizedOrigins];
+};
+
+const SAFE_LOG_ERROR_CODES = new Set([
+  'forbidden',
+  'payload_too_large',
+  'rate_limited',
+  'validation_error',
+]);
+
+const getErrorCode = (error: unknown): string | undefined => {
+  if (
+    typeof error !== 'object'
+    || error === null
+    || !('code' in error)
+    || typeof error.code !== 'string'
+  ) {
+    return undefined;
+  }
+  return error.code;
+};
+
+const getSafeLogErrorCode = (error: unknown): string => {
+  const errorCode = getErrorCode(error);
+  if (errorCode === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+    return 'payload_too_large';
+  }
+  if (errorCode === 'FST_ERR_VALIDATION') {
+    return 'validation_error';
+  }
+  if (error instanceof AppError && SAFE_LOG_ERROR_CODES.has(error.code)) {
+    return error.code;
+  }
+  return 'internal_error';
+};
+
+const installStructuredLogging = (app: FastifyInstance): void => {
+  const errorCodes = new WeakMap<object, string>();
+  const startTimes = new WeakMap<object, bigint>();
+
+  app.addHook('onRequest', (request, _reply, done) => {
+    startTimes.set(request, process.hrtime.bigint());
+    done();
+  });
+  app.addHook('onError', (request, _reply, error, done) => {
+    errorCodes.set(request, getSafeLogErrorCode(error));
+    done();
+  });
+  app.addHook('onResponse', (request, reply, done) => {
+    const startedAt = startTimes.get(request) ?? process.hrtime.bigint();
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const errorCode = errorCodes.get(request);
+
+    request.log.info({
+      durationMs,
+      ...(errorCode === undefined ? {} : { errorCode }),
+      method: request.method,
+      requestId: request.id,
+      routePattern: request.routeOptions.url,
+      status: reply.statusCode,
+    }, 'request completed');
+    done();
+  });
+};
+
+export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
+  const recipeMediaOrigins = normalizeRecipeMediaOrigins(
+    options.recipeMediaOrigins ?? [],
+  );
+  const sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
+  const sessions = new MemorySessionStore({
+    ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.randomBytes === undefined
+      ? {}
+      : { randomBytes: options.randomBytes }),
+    ttlMs: sessionTtlMs,
+  });
+  const app = Fastify({
+    bodyLimit: DEFAULT_REQUEST_BODY_LIMIT,
+    logController: new LogController({ disableRequestLogging: true }),
+    logger: options.loggerEnabled === false
+      ? false
+      : {
+          level: 'info',
+          redact: {
+            paths: [
+              'authorization',
+              'apiKey',
+              'cookie',
+              'credential',
+              'csrfToken',
+              'imageBytes',
+              'maintenanceToken',
+              'password',
+              'prompt',
+              'rawModelError',
+              'req.headers.authorization',
+              'req.headers.cookie',
+              'req.headers["api-key"]',
+              'req.headers["x-maintenance-token"]',
+              'req.headers["x-csrf-token"]',
+              'secret',
+              'transcript',
+              '["api-key"]',
+              '["x-csrf-token"]',
+              '["x-maintenance-token"]',
+            ],
+            remove: true,
+          },
+          ...(options.loggerStream === undefined
+            ? {}
+            : { stream: options.loggerStream }),
+        },
+  });
+
+  void app.register(fastifyCookie);
+  void app.register(fastifyHelmet, {
+    contentSecurityPolicy: {
+      directives: {
+        baseUri: ["'self'"],
+        connectSrc: ["'self'"],
+        defaultSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        frameSrc: ["'self'", ...recipeMediaOrigins],
+        imgSrc: ["'self'", ...recipeMediaOrigins],
+        mediaSrc: ["'self'", ...recipeMediaOrigins],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+      },
+      useDefaults: false,
+    },
+    hsts: false,
+  });
+  void app.register(fastifyRateLimit, {
+    errorResponseBuilder: () => new AppError(
+      'rate_limited',
+      'Too many requests',
+      429,
+    ),
+    global: false,
+  });
+  installStructuredLogging(app);
+  app.setErrorHandler((error, request, reply) => {
+    if (getErrorCode(error) === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+      errorHandler(new AppError(
+        'payload_too_large',
+        'Request body is too large',
+        413,
+      ), request, reply);
+      return;
+    }
+
+    errorHandler(error, request, reply);
+  });
+  installRequestSecurity(app, {
+    allowedHosts: options.allowedHosts ?? PRODUCTION_ALLOWED_HOSTS,
+    ...(options.maintenance === undefined
+      ? {}
+      : { maintenance: options.maintenance }),
+    ...(options.rateLimits === undefined
+      ? {}
+      : { rateLimits: options.rateLimits }),
+    sessions,
+  });
+
+  app.after(() => {
+    app.get('/api/health', () => ({ data: { status: 'ok' } }));
+    app.get('/api/bootstrap', {
+      config: ROUTE_SECURITY_CONFIGS.bootstrap,
+    }, (_request, reply) => {
+      const session = sessions.create();
+      reply.setCookie(SESSION_COOKIE_NAME, session.sessionId, {
+        httpOnly: true,
+        maxAge: Math.floor(sessionTtlMs / 1_000),
+        path: '/',
+        sameSite: 'strict',
+        secure: options.secureCookies ?? false,
+      });
+
+      const response: BootstrapResponse = {
+        csrfToken: session.csrfToken,
+        sessionExpiresAt: new Date(session.expiresAt).toISOString(),
+        capabilities: {
+          speechRecognition: 'browser-detect',
+          speechSynthesis: 'browser-detect',
+        },
+      };
+      return response;
+    });
+  });
+
+  return app;
+};
