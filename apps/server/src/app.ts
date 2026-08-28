@@ -8,6 +8,8 @@ import Fastify, {
   type FastifyInstance,
   LogController,
 } from 'fastify';
+import { registerRecipeNoteRoutes } from './features/recipes/note-routes.js';
+import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { errorHandler } from './plugins/error-handler.js';
 import {
@@ -295,6 +297,8 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
   app.after(() => {
     if (options.database !== undefined) {
       registerRecipeSearchRoutes(app, options.database);
+      registerRecipeRoutes(app, options.database);
+      registerRecipeNoteRoutes(app, options.database);
     }
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
     app.get('/api/bootstrap', {
