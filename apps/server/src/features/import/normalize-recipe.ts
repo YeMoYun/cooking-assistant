@@ -1,8 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { RecipeImport, RecipeMedia } from '@xiaochu/shared';
+import {
+  buildSearchTerms,
+  compactSearchText,
+} from '../recipes/search-tokenizer.js';
 
 const PUNCTUATION_OR_SYMBOL = /[\p{P}\p{S}\s]+/gu;
-const HAN_SEQUENCE = /\p{Script=Han}+/gu;
 
 const UNIT_ALIASES: Readonly<Record<string, string>> = {
   g: 'g',
@@ -101,26 +104,6 @@ const canonicalizeLabels = (values: readonly string[]): string[] => {
     }
   }
   return [...labels.values()].sort(compareCanonical);
-};
-
-const searchTerms = (values: readonly string[]): string => {
-  const terms = new Set<string>();
-  for (const value of values) {
-    const normalized = normalizeLookupText(value);
-    if (normalized.length === 0) {
-      continue;
-    }
-    terms.add(normalized);
-    for (const sequence of normalized.match(HAN_SEQUENCE) ?? []) {
-      const characters = [...sequence];
-      for (const size of [2, 3] as const) {
-        for (let index = 0; index + size <= characters.length; index += 1) {
-          terms.add(characters.slice(index, index + size).join(''));
-        }
-      }
-    }
-  }
-  return [...terms].sort((left, right) => left.localeCompare(right, 'zh-CN')).join(' ');
 };
 
 export interface NormalizedMedia {
@@ -345,13 +328,13 @@ export const normalizeRecipe = (input: RecipeImport): NormalizedRecipePayload =>
     ...ingredient.aliases.map((alias) => alias.alias),
   ]);
   const search: NormalizedSearchDocument = {
-    titleNormalized: normalizeLookupText(title),
-    aliasesNormalized: aliases.map(normalizeLookupText).join(' '),
-    titleTerms: searchTerms([title]),
-    ingredientTerms: searchTerms(ingredientNames),
-    aliasTerms: searchTerms(aliases),
-    summaryTerms: searchTerms([summary]),
-    tagTerms: searchTerms([...tags, ...taste, ...techniques]),
+    titleNormalized: compactSearchText(title),
+    aliasesNormalized: aliases.map(compactSearchText).join(' '),
+    titleTerms: buildSearchTerms([title]),
+    ingredientTerms: buildSearchTerms(ingredientNames),
+    aliasTerms: buildSearchTerms(aliases),
+    summaryTerms: buildSearchTerms([summary]),
+    tagTerms: buildSearchTerms([...tags, ...taste, ...techniques]),
   };
   const searchLimits: ReadonlyArray<readonly [keyof NormalizedSearchDocument, number]> = [
     ['titleNormalized', 200],

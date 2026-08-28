@@ -3,10 +3,12 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { AppError } from '@xiaochu/shared';
+import type Database from 'better-sqlite3';
 import Fastify, {
   type FastifyInstance,
   LogController,
 } from 'fastify';
+import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { errorHandler } from './plugins/error-handler.js';
 import {
   DEFAULT_REQUEST_BODY_LIMIT,
@@ -45,6 +47,7 @@ export interface LoggerStream {
 export interface BuildAppOptions {
   readonly allowedHosts?: readonly string[];
   readonly allowedMutationOrigins?: readonly string[];
+  readonly database?: Database.Database;
   readonly loggerEnabled?: boolean;
   readonly loggerStream?: LoggerStream;
   readonly maintenance?: MaintenanceRequestOptions;
@@ -290,6 +293,9 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
   }
 
   app.after(() => {
+    if (options.database !== undefined) {
+      registerRecipeSearchRoutes(app, options.database);
+    }
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
     app.get('/api/bootstrap', {
       config: ROUTE_SECURITY_CONFIGS.bootstrap,

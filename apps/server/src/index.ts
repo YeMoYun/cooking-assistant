@@ -2,6 +2,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
+import { resolveAppPaths } from './config.js';
+import { openDatabase } from './db/database.js';
 
 export const LOOPBACK_LISTEN_OPTIONS = {
   host: '127.0.0.1',
@@ -20,9 +22,29 @@ export const resolveWebDistDirectory = (
   'dist',
 );
 
-export const buildProductionApp = (): FastifyInstance => buildApp({
-  webDistDirectory: resolveWebDistDirectory(),
-});
+const buildDatabaseBackedApp = (
+  options: Parameters<typeof buildApp>[0],
+): FastifyInstance => {
+  const paths = resolveAppPaths();
+  const database = openDatabase(paths.databasePath, paths.migrationsDirectory);
+  try {
+    const app = buildApp({ ...options, database });
+    app.addHook('onClose', (_instance, done) => {
+      if (database.open) {
+        database.close();
+      }
+      done();
+    });
+    return app;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
+};
+
+export const buildProductionApp = (): FastifyInstance => (
+  buildDatabaseBackedApp({ webDistDirectory: resolveWebDistDirectory() })
+);
 
 export const startServer = async (
   app: FastifyInstance = buildProductionApp(),
@@ -40,7 +62,9 @@ const isMainModule = (): boolean => {
 if (isMainModule()) {
   const isViteDevelopment = process.argv.includes('--vite-development');
   const app = isViteDevelopment
-    ? buildApp({ allowedMutationOrigins: [VITE_DEVELOPMENT_ORIGIN] })
+    ? buildDatabaseBackedApp({
+        allowedMutationOrigins: [VITE_DEVELOPMENT_ORIGIN],
+      })
     : buildProductionApp();
 
   void startServer(app).catch(() => {
