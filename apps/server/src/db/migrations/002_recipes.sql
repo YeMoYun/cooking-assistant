@@ -5,6 +5,8 @@ CREATE TABLE recipes (
     CHECK(length(source_key) BETWEEN 1 AND 200),
   content_version TEXT NOT NULL
     CHECK(length(content_version) BETWEEN 1 AND 50),
+  content_hash TEXT NOT NULL
+    CHECK(length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'),
   schema_version INTEGER NOT NULL DEFAULT 1
     CHECK(schema_version = 1),
   title TEXT NOT NULL
@@ -115,6 +117,31 @@ CREATE TABLE ingredient_aliases (
 
 CREATE INDEX ingredient_aliases_ingredient_idx
   ON ingredient_aliases(ingredient_id, position);
+
+-- Records which recipes contribute each alias. The derived ingredient_aliases
+-- table can therefore be rebuilt without removing an alias still used by a
+-- different recipe.
+CREATE TABLE recipe_ingredient_alias_sources (
+  recipe_id TEXT NOT NULL
+    REFERENCES recipes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  ingredient_id TEXT NOT NULL
+    REFERENCES ingredients(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  alias_id TEXT NOT NULL
+    CHECK(length(alias_id) BETWEEN 1 AND 120),
+  alias TEXT NOT NULL
+    CHECK(length(alias) BETWEEN 1 AND 80),
+  normalized_alias TEXT NOT NULL
+    CHECK(length(normalized_alias) BETWEEN 1 AND 80),
+  position INTEGER NOT NULL
+    CHECK(position >= 0),
+  PRIMARY KEY(recipe_id, normalized_alias),
+  UNIQUE(recipe_id, ingredient_id, position)
+);
+
+CREATE INDEX recipe_ingredient_alias_sources_owner_idx
+  ON recipe_ingredient_alias_sources(normalized_alias, ingredient_id);
+CREATE INDEX recipe_ingredient_alias_sources_ingredient_idx
+  ON recipe_ingredient_alias_sources(ingredient_id, recipe_id, position);
 
 CREATE TABLE recipe_ingredients (
   id TEXT PRIMARY KEY
