@@ -1,6 +1,7 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
 import { AppError } from '@xiaochu/shared';
 import Fastify, {
   type FastifyInstance,
@@ -43,6 +44,7 @@ export interface LoggerStream {
 
 export interface BuildAppOptions {
   readonly allowedHosts?: readonly string[];
+  readonly allowedMutationOrigins?: readonly string[];
   readonly loggerEnabled?: boolean;
   readonly loggerStream?: LoggerStream;
   readonly maintenance?: MaintenanceRequestOptions;
@@ -54,6 +56,7 @@ export interface BuildAppOptions {
   readonly recipeMediaOrigins?: readonly string[];
   readonly secureCookies?: boolean;
   readonly sessionTtlMs?: number;
+  readonly webDistDirectory?: string;
 }
 
 const HTTPS_ORIGIN_PATTERN = /^https:\/\/[^/?#]+\/?$/u;
@@ -247,6 +250,9 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
   });
   installRequestSecurity(app, {
     allowedHosts: options.allowedHosts ?? PRODUCTION_ALLOWED_HOSTS,
+    ...(options.allowedMutationOrigins === undefined
+      ? {}
+      : { allowedMutationOrigins: options.allowedMutationOrigins }),
     ...(options.maintenance === undefined
       ? {}
       : { maintenance: options.maintenance }),
@@ -255,6 +261,33 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
       : { rateLimits: options.rateLimits }),
     sessions,
   });
+
+  app.addHook('onSend', (request, reply, payload, done) => {
+    if (request.url === '/api' || request.url.startsWith('/api/')) {
+      reply.header('Cache-Control', 'no-store');
+    }
+    done(null, payload);
+  });
+
+  if (options.webDistDirectory !== undefined) {
+    const webDistDirectory = options.webDistDirectory;
+    void app.register(fastifyStatic, {
+      cacheControl: false,
+      root: webDistDirectory,
+      setHeaders: (reply, filePath) => {
+        const normalizedPath = filePath.replaceAll('\\', '/');
+        if (normalizedPath.endsWith('/index.html')) {
+          reply.header('Cache-Control', 'no-cache');
+        } else if (normalizedPath.includes('/assets/')) {
+          reply.header(
+            'Cache-Control',
+            'public, max-age=31536000, immutable',
+          );
+        }
+      },
+      wildcard: false,
+    });
+  }
 
   app.after(() => {
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
@@ -279,6 +312,35 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
         },
       };
       return response;
+    });
+
+    app.setNotFoundHandler((request, reply) => {
+      if (request.url === '/api' || request.url.startsWith('/api/')) {
+        errorHandler(
+          new AppError('not_found', '接口不存在', 404),
+          request,
+          reply,
+        );
+        return;
+      }
+
+      const acceptsHtml = request.method === 'GET'
+        && request.headers.accept?.split(',').some((value) => (
+          value.trim().toLowerCase().startsWith('text/html')
+        )) === true;
+      if (options.webDistDirectory !== undefined && acceptsHtml) {
+        reply
+          .header('Cache-Control', 'no-cache')
+          .type('text/html')
+          .sendFile('index.html', { cacheControl: false });
+        return;
+      }
+
+      errorHandler(
+        new AppError('not_found', '资源不存在', 404),
+        request,
+        reply,
+      );
     });
   });
 

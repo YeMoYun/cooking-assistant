@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
 type TabIconName = 'assistant' | 'home' | 'inventory' | 'my' | 'recipes'
@@ -64,6 +65,68 @@ const TabIcon = ({ name }: { readonly name: TabIconName }) => {
   )
 }
 
+type LocalServiceStatus = 'available' | 'checking' | 'unavailable'
+
+const LocalServiceNotice = () => {
+  const [retryAttempt, setRetryAttempt] = useState(0)
+  const [status, setStatus] = useState<LocalServiceStatus>('checking')
+
+  useEffect(() => {
+    if (
+      !('serviceWorker' in navigator)
+      || navigator.serviceWorker.controller === null
+    ) {
+      setStatus('available')
+      return undefined
+    }
+
+    const abortController = new AbortController()
+    setStatus('checking')
+    void fetch('/api/health', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: abortController.signal,
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error('Local service health check failed')
+      }
+      setStatus('available')
+    }).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setStatus('unavailable')
+      }
+    })
+
+    return () => abortController.abort()
+  }, [retryAttempt])
+
+  if (status !== 'unavailable') {
+    return null
+  }
+
+  return (
+    <aside aria-live="assertive" className="local-service-notice" role="alert">
+      <div className="local-service-notice__copy">
+        <strong>本地服务未启动</strong>
+        <span>
+          当前只加载了应用外壳。请在项目目录运行
+          {' '}
+          <code>npm run start -w @xiaochu/server</code>
+          {' '}
+          后重试；食谱与 AI 数据需要本地服务。
+        </span>
+      </div>
+      <button
+        className="local-service-notice__retry"
+        onClick={() => setRetryAttempt((attempt) => attempt + 1)}
+        type="button"
+      >
+        重试
+      </button>
+    </aside>
+  )
+}
+
 export const AppShell = () => (
   <div className="app-shell">
     <header className="app-header">
@@ -77,6 +140,8 @@ export const AppShell = () => (
         </Link>
       </div>
     </header>
+
+    <LocalServiceNotice />
 
     <main className="app-main" id="main-content">
       <Outlet />

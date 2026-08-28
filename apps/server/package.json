@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts --vite-development",
     "build": "tsup src/index.ts --format esm --platform node --out-dir dist --sourcemap && copyfiles -u 1 src/db/migrations/*.sql dist/db/migrations",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",

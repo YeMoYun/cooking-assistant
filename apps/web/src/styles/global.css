@@ -74,6 +74,51 @@ textarea:focus-visible {
   align-items: center;
 }
 
+.local-service-notice {
+  display: flex;
+  inline-size: calc(100% - (2 * var(--space-4)));
+  max-inline-size: calc(var(--content-max) - (2 * var(--space-4)));
+  min-inline-size: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-4) auto 0;
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-peach);
+}
+
+.local-service-notice__copy {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.local-service-notice__copy span {
+  color: var(--color-text-soft);
+  font-size: 0.82rem;
+}
+
+.local-service-notice__copy code {
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-weight: 700;
+}
+
+.local-service-notice__retry {
+  min-block-size: var(--touch-target);
+  flex: 0 0 auto;
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-4);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .brand {
   display: inline-flex;
   min-block-size: var(--touch-target);
@@ -371,6 +416,11 @@ textarea:focus-visible {
   .app-header__inner,
   .app-main {
     padding-inline: var(--space-8);
+  }
+
+  .local-service-notice {
+    inline-size: calc(100% - (2 * var(--space-8)));
+    max-inline-size: calc(var(--content-max) - (2 * var(--space-8)));
   }
 
   .app-main {

@@ -170,6 +170,7 @@ export interface MaintenanceRequestOptions {
 
 export interface RequestSecurityOptions {
   readonly allowedHosts: readonly string[];
+  readonly allowedMutationOrigins?: readonly string[];
   readonly maintenance?: MaintenanceRequestOptions;
   readonly rateLimits?: Partial<
     Readonly<Record<RateLimitPolicyName, RouteRateLimitPolicy>>
@@ -210,6 +211,7 @@ export const installRequestSecurity = (
   options: RequestSecurityOptions,
 ): void => {
   const allowedHosts = new Set(options.allowedHosts);
+  const allowedMutationOrigins = new Set(options.allowedMutationOrigins ?? []);
   const rateLimits = {
     ...DEFAULT_RATE_LIMIT_POLICIES,
     ...options.rateLimits,
@@ -271,7 +273,13 @@ export const installRequestSecurity = (
     }
 
     const origin = getSingleHeader(originHeader);
-    if (origin !== `http://${host}`) {
+    if (
+      origin === undefined
+      || (
+        origin !== `http://${host}`
+        && !allowedMutationOrigins.has(origin)
+      )
+    ) {
       throw forbidden();
     }
 
