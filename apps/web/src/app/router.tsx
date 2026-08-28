@@ -4,6 +4,7 @@ import {
   type RouteObject,
   useParams,
 } from 'react-router-dom'
+import { RecipeCatalogPage } from '../features/recipes/RecipeCatalogPage'
 import { AppShell } from './AppShell'
 
 const recipePreviews = [
@@ -53,34 +54,6 @@ const HomePage = () => (
   </div>
 )
 
-const RecipesPage = () => (
-  <div className="page">
-    <section className="page-heading">
-      <h1>找一道今天能做好的菜</h1>
-      <p>这里先展示简要信息，点开后再看完整教程。</p>
-    </section>
-
-    <section aria-label="食谱列表" className="recipe-grid">
-      {recipePreviews.map((recipe) => (
-        <Link className="recipe-card" key={recipe.id} to={`/recipes/${recipe.id}`}>
-          <span
-            aria-label={`${recipe.name}图片占位`}
-            className="recipe-card__media"
-            data-media-ratio="4:3"
-            role="img"
-          >
-            <span aria-hidden="true" className="recipe-card__media-mark" />
-          </span>
-          <span className="recipe-card__body">
-            <strong>{recipe.name}</strong>
-            <small>{recipe.note}</small>
-          </span>
-        </Link>
-      ))}
-    </section>
-  </div>
-)
-
 const RecipeDetailPage = () => {
   const { recipeId } = useParams()
   const recipe = recipePreviews.find(({ id }) => id === recipeId)
@@ -120,7 +93,7 @@ export const appRoutes: RouteObject[] = [
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'recipes', element: <RecipesPage /> },
+      { path: 'recipes', element: <RecipeCatalogPage /> },
       { path: 'recipes/:recipeId', element: <RecipeDetailPage /> },
       {
         path: 'inventory',
