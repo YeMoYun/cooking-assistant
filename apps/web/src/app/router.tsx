@@ -6,6 +6,10 @@ import {
 import { RecipeCatalogPage } from '../features/recipes/RecipeCatalogPage'
 import { RecipeDetailPage } from '../features/recipes/RecipeDetailPage'
 import { ProviderSettingsPage } from '../features/providers/ProviderSettingsPage'
+import { InventoryPage } from '../features/inventory/InventoryPage'
+import { RecognitionConfirmPage } from '../features/inventory/RecognitionConfirmPage'
+import { ShoppingListPage } from '../features/shopping/ShoppingListPage'
+import { ModifyRecipePage } from '../features/variants/ModifyRecipePage'
 import { AppShell } from './AppShell'
 
 const HomePage = () => (
@@ -70,23 +74,15 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: 'recipes', element: <RecipeCatalogPage /> },
       { path: 'recipes/:recipeId', element: <RecipeDetailPage /> },
+      { path: 'recipes/:recipeId/adapt', element: <ModifyRecipePage /> },
       {
         path: 'inventory',
-        element: (
-          <SimplePage
-            description="拍照识别与手动整理食材的入口会放在这里。"
-            heading="看看冰箱里有什么"
-          />
-        ),
+        element: <InventoryPage />,
       },
+      { path: 'inventory/recognition', element: <RecognitionConfirmPage /> },
       {
         path: 'shopping',
-        element: (
-          <SimplePage
-            description="从食谱补齐缺少的食材，也可以随手添加。"
-            heading="购物清单"
-          />
-        ),
+        element: <ShoppingListPage />,
       },
       {
         path: 'assistant',

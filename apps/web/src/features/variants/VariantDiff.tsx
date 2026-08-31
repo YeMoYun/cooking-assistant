@@ -1,0 +1,3 @@
+import type { RecipeVariantDiff as RecipeVariantDiffData } from '@xiaochu/shared'
+
+export const VariantDiff = ({ diff }: { readonly diff: RecipeVariantDiffData }) => <div className="variant-diff"><section><h3>食材变化</h3>{diff.ingredientChanges.length === 0 ? <p>食材数量和替换没有变化。</p> : <ul>{diff.ingredientChanges.map((item) => <li key={item}>{item}</li>)}</ul>}</section><section><h3>步骤变化</h3>{diff.stepChanges.length === 0 ? <p>烹饪步骤没有变化。</p> : <ul>{diff.stepChanges.map((item) => <li key={item}>{item}</li>)}</ul>}</section><section className={diff.safetyWarnings.length > 0 ? 'safety-box' : ''}><h3>食品安全提示</h3>{diff.safetyWarnings.length === 0 ? <p>没有新增安全提示。</p> : <ul>{diff.safetyWarnings.map((item) => <li key={item}>{item}</li>)}</ul>}</section></div>
