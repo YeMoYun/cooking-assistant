@@ -61,6 +61,11 @@ export interface PendingActionServiceOptions {
   readonly ttlMs?: number;
 }
 
+export interface PendingActionIdentity {
+  readonly kind: PendingActionKind;
+  readonly toolName: string;
+}
+
 const sessionBindingHash = (sessionId: string): string => createHash('sha256')
   .update(sessionId, 'utf8')
   .digest('hex');
@@ -291,6 +296,62 @@ export class PendingActionService {
       return result;
     });
     return confirm.immediate();
+  }
+
+  inspect(pendingActionId: string, sessionId: string): PendingActionIdentity {
+    const read = this.db.transaction(() => {
+      const row = this.db.prepare(`
+        SELECT action_kind, tool_name, session_binding_hash, expires_at, consumed_at
+        FROM pending_actions WHERE id = ?
+      `).get(pendingActionId) as Pick<PendingActionRow,
+        'action_kind' | 'tool_name' | 'session_binding_hash' | 'expires_at' | 'consumed_at'
+      > | undefined;
+      if (row === undefined) {
+        throw new AppError('pending_action_not_found', 'Pending action was not found', 404);
+      }
+      if (!hashesEqual(row.session_binding_hash, sessionBindingHash(sessionId))) {
+        throw new AppError('forbidden', 'Request forbidden', 403);
+      }
+      if (row.consumed_at !== null) {
+        throw new AppError('pending_action_used', 'Pending action was already handled', 409);
+      }
+      if (this.#now() >= Date.parse(row.expires_at)) {
+        throw new AppError('pending_action_expired', 'Pending action has expired', 410);
+      }
+      return { kind: row.action_kind, toolName: row.tool_name };
+    });
+    return read.deferred();
+  }
+
+  reject(pendingActionId: string, sessionId: string): void {
+    const reject = this.db.transaction(() => {
+      const row = this.db.prepare(`
+        SELECT session_binding_hash, expires_at, consumed_at
+        FROM pending_actions WHERE id = ?
+      `).get(pendingActionId) as Pick<PendingActionRow,
+        'session_binding_hash' | 'expires_at' | 'consumed_at'
+      > | undefined;
+      if (row === undefined) {
+        throw new AppError('pending_action_not_found', 'Pending action was not found', 404);
+      }
+      if (!hashesEqual(row.session_binding_hash, sessionBindingHash(sessionId))) {
+        throw new AppError('forbidden', 'Request forbidden', 403);
+      }
+      if (row.consumed_at !== null) {
+        throw new AppError('pending_action_used', 'Pending action was already handled', 409);
+      }
+      if (this.#now() >= Date.parse(row.expires_at)) {
+        throw new AppError('pending_action_expired', 'Pending action has expired', 410);
+      }
+      const result = this.db.prepare(`
+        UPDATE pending_actions SET consumed_at = ?
+        WHERE id = ? AND consumed_at IS NULL
+      `).run(new Date(this.#now()).toISOString(), pendingActionId);
+      if (result.changes !== 1) {
+        throw new AppError('pending_action_used', 'Pending action was already handled', 409);
+      }
+    });
+    reject.immediate();
   }
 
   #assertCurrentVersions(expected: Readonly<Record<string, number>>): void {

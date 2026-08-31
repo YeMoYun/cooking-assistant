@@ -11,6 +11,7 @@ import { RecognitionConfirmPage } from '../features/inventory/RecognitionConfirm
 import { ShoppingListPage } from '../features/shopping/ShoppingListPage'
 import { ModifyRecipePage } from '../features/variants/ModifyRecipePage'
 import { AssistantPage } from '../features/assistant/AssistantPage'
+import { MyPage } from '../features/my/MyPage'
 import { AppShell } from './AppShell'
 
 const HomePage = () => (
@@ -76,17 +77,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'my',
-        element: (
-          <div className="page">
-            <section className="page-heading">
-              <h1>我的厨房</h1>
-              <p>管理本地偏好与模型接入。</p>
-            </section>
-            <Link className="settings-link" to="/settings/providers">
-              模型与密钥
-            </Link>
-          </div>
-        ),
+        element: <MyPage />,
       },
       {
         path: 'settings/providers',

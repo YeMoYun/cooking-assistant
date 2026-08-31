@@ -9,6 +9,7 @@ import Fastify, {
   LogController,
 } from 'fastify';
 import { registerRecipeNoteRoutes } from './features/recipes/note-routes.js';
+import { registerPendingActionRoutes } from './features/actions/pending-action-routes.js';
 import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
@@ -319,6 +320,7 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
       registerRecipeSearchRoutes(app, options.database);
       registerRecipeRoutes(app, options.database);
       registerRecipeNoteRoutes(app, options.database);
+      registerPendingActionRoutes(app, options.database);
       registerInventoryRoutes(app, options.database);
       registerShoppingRoutes(app, options.database);
       if (options.secretStore !== undefined) {

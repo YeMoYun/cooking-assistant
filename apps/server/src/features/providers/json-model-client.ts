@@ -22,6 +22,7 @@ export interface ModelProviderProfile {
   readonly normalizedBaseUrl: string;
   readonly modelId: string;
   readonly capabilities: ProviderCapabilities;
+  readonly streamEnabled: boolean;
   readonly keyRef: string;
 }
 
@@ -47,6 +48,7 @@ export interface ModelCompletionRequest {
   readonly jsonMode?: boolean;
   readonly maxTokens?: number;
   readonly temperature?: number;
+  readonly tools?: readonly unknown[];
 }
 
 export interface JsonCompletionRequest<T> extends Omit<
@@ -60,6 +62,11 @@ export interface ModelCompletionResult {
   readonly content: string;
   readonly model: string;
 }
+
+export type ModelProviderStreamEvent =
+  | { readonly type: 'text'; readonly text: string }
+  | { readonly type: 'tool'; readonly index: number; readonly callId: string; readonly name?: string; readonly argumentsDelta?: string }
+  | { readonly type: 'finish'; readonly reason: string };
 
 export interface JsonCompletionResult<T> {
   readonly value: T;
@@ -136,12 +143,13 @@ export const buildChatCompletionsUrl = (baseUrl: string): string => {
 export const buildChatCompletionBody = (
   requestInput: Pick<
     ModelCompletionRequest,
-    'jsonMode' | 'maxTokens' | 'messages' | 'profile' | 'temperature'
+    'jsonMode' | 'maxTokens' | 'messages' | 'profile' | 'temperature' | 'tools'
   >,
+  stream = false,
 ): Readonly<Record<string, unknown>> => ({
   model: requestInput.profile.modelId,
   messages: requestInput.messages,
-  stream: false,
+  stream,
   ...(requestInput.maxTokens === undefined
     ? {}
     : { max_tokens: requestInput.maxTokens }),
@@ -151,6 +159,9 @@ export const buildChatCompletionBody = (
   ...(requestInput.jsonMode === true
     ? { response_format: { type: 'json_object' } }
     : {}),
+  ...(requestInput.tools === undefined || requestInput.tools.length === 0
+    ? {}
+    : { tools: requestInput.tools }),
 });
 
 const readBoundedBody = async (
@@ -308,6 +319,60 @@ const mapRequestError = (
   );
 };
 
+const parseStreamPayload = (raw: string): readonly ModelProviderStreamEvent[] => {
+  const payload = parseJsonObject(raw);
+  const choices = payload.choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    throw new ModelClientError('protocol', 'Provider stream did not contain choices');
+  }
+  const choice = choices[0];
+  if (typeof choice !== 'object' || choice === null || Array.isArray(choice)) {
+    throw new ModelClientError('protocol', 'Provider stream choice is invalid');
+  }
+  const record = choice as Record<string, unknown>;
+  const events: ModelProviderStreamEvent[] = [];
+  const delta = record.delta;
+  if (typeof delta === 'object' && delta !== null && !Array.isArray(delta)) {
+    const deltaRecord = delta as Record<string, unknown>;
+    if (typeof deltaRecord.content === 'string' && deltaRecord.content.length > 0) {
+      events.push({ type: 'text', text: deltaRecord.content });
+    }
+    if (Array.isArray(deltaRecord.tool_calls)) {
+      deltaRecord.tool_calls.forEach((toolCall, position) => {
+        if (typeof toolCall !== 'object' || toolCall === null || Array.isArray(toolCall)) return;
+        const toolRecord = toolCall as Record<string, unknown>;
+        const index = typeof toolRecord.index === 'number' && Number.isInteger(toolRecord.index)
+          ? toolRecord.index : position;
+        const functionValue = toolRecord.function;
+        const functionRecord = typeof functionValue === 'object'
+          && functionValue !== null && !Array.isArray(functionValue)
+          ? functionValue as Record<string, unknown> : undefined;
+        const callId = typeof toolRecord.id === 'string' && toolRecord.id.length > 0
+          ? toolRecord.id : `tool-${index}`;
+        const name = typeof functionRecord?.name === 'string' ? functionRecord.name : undefined;
+        const argumentsDelta = typeof functionRecord?.arguments === 'string'
+          ? functionRecord.arguments : undefined;
+        events.push({
+          type: 'tool', index, callId,
+          ...(name === undefined ? {} : { name }),
+          ...(argumentsDelta === undefined ? {} : { argumentsDelta }),
+        });
+      });
+    }
+  }
+  if (typeof record.finish_reason === 'string') {
+    events.push({ type: 'finish', reason: record.finish_reason });
+  }
+  return events;
+};
+
+const splitSseLines = (buffer: string): { readonly lines: string[]; readonly rest: string } => {
+  const normalized = buffer.replaceAll('\r\n', '\n');
+  const lastBreak = normalized.lastIndexOf('\n');
+  if (lastBreak === -1) return { lines: [], rest: normalized };
+  return { lines: normalized.slice(0, lastBreak).split('\n'), rest: normalized.slice(lastBreak + 1) };
+};
+
 export class JsonModelClient {
   readonly #bodyTimeoutMs: number;
   readonly #connectTimeoutMs: number;
@@ -441,6 +506,93 @@ export class JsonModelClient {
       );
     }
     return { value, model: completion.model };
+  }
+
+  async *stream(input: ModelCompletionRequest): AsyncIterable<ModelProviderStreamEvent> {
+    if (!input.profile.capabilities.stream || !input.profile.streamEnabled) {
+      const completed = await this.complete(input);
+      if (completed.content.length > 0) yield { type: 'text', text: completed.content };
+      yield { type: 'finish', reason: 'stop' };
+      return;
+    }
+    if (input.messages.length === 0 || input.messages.length > 200) {
+      throw new ModelClientError('protocol', 'Model messages are invalid');
+    }
+    if (input.tools !== undefined && !input.profile.capabilities.tools) {
+      throw new ModelClientError('protocol', 'Provider does not support tools');
+    }
+    const validated = await this.#policy.validateBaseUrl(input.profile.normalizedBaseUrl);
+    if (validated.normalizedBaseUrl !== input.profile.normalizedBaseUrl) {
+      throw new ModelClientError('protocol', 'Stored provider URL is not canonical');
+    }
+    const targetUrl = buildChatCompletionsUrl(validated.normalizedBaseUrl);
+    let apiKey: string;
+    try {
+      apiKey = await getOriginBoundSecret(this.secretStore, input.profile.keyRef, validated.origin);
+    } catch (error) {
+      throw new ModelClientError('auth', 'Provider credential is unavailable', error instanceof Error ? { cause: error } : undefined);
+    }
+    const requestBody = JSON.stringify(buildChatCompletionBody(input, true));
+    if (Buffer.byteLength(requestBody, 'utf8') > this.#maxRequestBytes) {
+      throw new ModelClientError('protocol', 'Provider request is too large');
+    }
+    const abortState = createAbortState(input.signal, this.#totalTimeoutMs);
+    const safeDispatcher = createSafeDispatcher({
+      boundOrigin: validated.origin,
+      connectTimeoutMs: this.#connectTimeoutMs,
+      developmentLoopback: validated.developmentLoopback,
+      policy: this.#policy,
+      targetUrl,
+    });
+    try {
+      const response = await request(targetUrl, {
+        method: 'POST',
+        headers: {
+          accept: 'text/event-stream', authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: requestBody,
+        bodyTimeout: this.#bodyTimeoutMs,
+        dispatcher: safeDispatcher.dispatcher,
+        headersTimeout: this.#headersTimeoutMs,
+        signal: abortState.signal,
+      });
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw errorForStatus(response.statusCode, await readBoundedBody(response.body, this.#maxResponseBytes));
+      }
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let bytesRead = 0;
+      for await (const chunk of response.body) {
+        bytesRead += chunk.byteLength;
+        if (bytesRead > this.#maxResponseBytes) {
+          throw new ModelClientError('protocol', 'Provider response exceeded the configured limit');
+        }
+        buffer += decoder.decode(chunk, { stream: true });
+        const split = splitSseLines(buffer);
+        buffer = split.rest;
+        for (const line of split.lines) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') return;
+          for (const event of parseStreamPayload(data)) yield event;
+        }
+      }
+      buffer += decoder.decode();
+      for (const line of splitSseLines(`${buffer}\n`).lines) {
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data !== '' && data !== '[DONE]') {
+          for (const event of parseStreamPayload(data)) yield event;
+        }
+      }
+    } catch (error) {
+      throw mapRequestError(error, input.signal, abortState.timedOut());
+    } finally {
+      abortState.cleanup();
+      await safeDispatcher.close().catch(() => undefined);
+      apiKey = '';
+    }
   }
 
   async testConnection(

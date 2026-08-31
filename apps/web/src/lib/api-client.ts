@@ -29,6 +29,7 @@ export type ApiRequestOptions = Omit<
 export interface ApiClient {
   bootstrap(signal: AbortSignal): Promise<BootstrapData>
   request<T>(path: string, options: ApiRequestOptions): Promise<T>
+  stream(path: string, options: ApiRequestOptions): Promise<Response>
 }
 
 export interface CreateApiClientOptions {
@@ -190,7 +191,34 @@ export const createApiClient = (
     return (success.success ? success.data.data : payload) as T
   }
 
-  return { bootstrap, request }
+  const stream = async (
+    path: string,
+    options: ApiRequestOptions,
+  ): Promise<Response> => {
+    assertApiPath(path)
+    await bootstrap(options.signal)
+    const headers = new Headers(options.headers)
+    const method = (options.method ?? 'GET').toUpperCase()
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      headers.set('x-csrf-token', csrfToken ?? '')
+    }
+    const { body: requestBody, signal, ...requestOptions } = options
+    const body = prepareBody(requestBody, headers)
+    const response = await fetchImpl(path, {
+      ...requestOptions,
+      ...(body === undefined ? {} : { body }),
+      credentials: 'same-origin',
+      headers,
+      method,
+      signal,
+    })
+    if (!response.ok) {
+      throw parseProblem(await parseJson(response), response.status)
+    }
+    return response
+  }
+
+  return { bootstrap, request, stream }
 }
 
 export const apiClient = createApiClient()
