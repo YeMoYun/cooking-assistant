@@ -1,5 +1,6 @@
 export * from './api.js';
 export * from './kitchen.js';
+export * from './model-stream.js';
 export * from './pending-action.js';
 export * from './providers.js';
 export * from './recipe-detail.js';

@@ -1,0 +1,1 @@
+export const normalizeFinishReason = (value: unknown): 'stop' | 'tool_calls' | 'length' | 'content_filter' | 'unknown' => value === 'stop' || value === 'tool_calls' || value === 'length' || value === 'content_filter' ? value : 'unknown'
