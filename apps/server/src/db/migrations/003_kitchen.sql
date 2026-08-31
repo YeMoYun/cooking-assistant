@@ -100,7 +100,7 @@ CREATE TABLE recipe_variants (
   source_recipe_id TEXT NOT NULL
     REFERENCES recipes(id) ON UPDATE CASCADE ON DELETE RESTRICT,
   name TEXT NOT NULL
-    CHECK(length(name) BETWEEN 1 AND 100),
+    CHECK(length(name) BETWEEN 1 AND 120),
   request_json TEXT NOT NULL
     CHECK(json_valid(request_json) AND length(request_json) <= 100000),
   result_json TEXT NOT NULL
@@ -125,7 +125,10 @@ CREATE TABLE provider_profiles (
   normalized_base_url TEXT NOT NULL
     CHECK(
       length(normalized_base_url) BETWEEN 9 AND 2048
-      AND normalized_base_url LIKE 'https://%'
+      AND (
+        normalized_base_url LIKE 'https://%'
+        OR normalized_base_url LIKE 'http://%'
+      )
     ),
   model_id TEXT NOT NULL
     CHECK(length(model_id) BETWEEN 1 AND 200),

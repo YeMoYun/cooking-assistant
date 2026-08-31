@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { resolveAppPaths } from './config.js';
 import { openDatabase } from './db/database.js';
+import { DpapiSecretStore } from './features/providers/dpapi-secret-store.js';
 
 export const LOOPBACK_LISTEN_OPTIONS = {
   host: '127.0.0.1',
@@ -22,13 +23,14 @@ export const resolveWebDistDirectory = (
   'dist',
 );
 
-const buildDatabaseBackedApp = (
+const buildDatabaseBackedApp = async (
   options: Parameters<typeof buildApp>[0],
-): FastifyInstance => {
+): Promise<FastifyInstance> => {
   const paths = resolveAppPaths();
   const database = openDatabase(paths.databasePath, paths.migrationsDirectory);
   try {
-    const app = buildApp({ ...options, database });
+    const secretStore = await DpapiSecretStore.create();
+    const app = buildApp({ ...options, database, secretStore });
     app.addHook('onClose', (_instance, done) => {
       if (database.open) {
         database.close();
@@ -42,15 +44,16 @@ const buildDatabaseBackedApp = (
   }
 };
 
-export const buildProductionApp = (): FastifyInstance => (
+export const buildProductionApp = (): Promise<FastifyInstance> => (
   buildDatabaseBackedApp({ webDistDirectory: resolveWebDistDirectory() })
 );
 
 export const startServer = async (
-  app: FastifyInstance = buildProductionApp(),
+  app?: FastifyInstance,
 ): Promise<FastifyInstance> => {
-  await app.listen(LOOPBACK_LISTEN_OPTIONS);
-  return app;
+  const resolvedApp = app ?? await buildProductionApp();
+  await resolvedApp.listen(LOOPBACK_LISTEN_OPTIONS);
+  return resolvedApp;
 };
 
 const isMainModule = (): boolean => {
@@ -61,13 +64,14 @@ const isMainModule = (): boolean => {
 
 if (isMainModule()) {
   const isViteDevelopment = process.argv.includes('--vite-development');
-  const app = isViteDevelopment
+  const appPromise = isViteDevelopment
     ? buildDatabaseBackedApp({
         allowedMutationOrigins: [VITE_DEVELOPMENT_ORIGIN],
+        allowLoopbackProviderHttp: true,
       })
     : buildProductionApp();
 
-  void startServer(app).catch(() => {
+  void appPromise.then((app) => startServer(app)).catch(() => {
     process.stderr.write('Unable to start the local server.\n');
     process.exitCode = 1;
   });

@@ -13,6 +13,8 @@ import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
 import { registerShoppingRoutes } from './features/shopping/shopping-routes.js';
+import { registerProviderRoutes } from './features/providers/provider-routes.js';
+import type { SecretStore } from './features/providers/secret-store.js';
 import { errorHandler } from './plugins/error-handler.js';
 import {
   DEFAULT_REQUEST_BODY_LIMIT,
@@ -49,6 +51,7 @@ export interface LoggerStream {
 }
 
 export interface BuildAppOptions {
+  readonly allowLoopbackProviderHttp?: boolean;
   readonly allowedHosts?: readonly string[];
   readonly allowedMutationOrigins?: readonly string[];
   readonly database?: Database.Database;
@@ -62,6 +65,7 @@ export interface BuildAppOptions {
   >;
   readonly recipeMediaOrigins?: readonly string[];
   readonly secureCookies?: boolean;
+  readonly secretStore?: SecretStore;
   readonly sessionTtlMs?: number;
   readonly webDistDirectory?: string;
 }
@@ -194,6 +198,7 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
               'password',
               'prompt',
               'rawModelError',
+              'req.body.apiKey',
               'req.headers.authorization',
               'req.headers.cookie',
               'req.headers["api-key"]',
@@ -303,6 +308,11 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
       registerRecipeNoteRoutes(app, options.database);
       registerInventoryRoutes(app, options.database);
       registerShoppingRoutes(app, options.database);
+      if (options.secretStore !== undefined) {
+        registerProviderRoutes(app, options.database, options.secretStore, {
+          allowLoopbackHttp: options.allowLoopbackProviderHttp ?? false,
+        });
+      }
     }
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
     app.get('/api/bootstrap', {

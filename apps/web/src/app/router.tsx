@@ -5,6 +5,7 @@ import {
 } from 'react-router-dom'
 import { RecipeCatalogPage } from '../features/recipes/RecipeCatalogPage'
 import { RecipeDetailPage } from '../features/recipes/RecipeDetailPage'
+import { ProviderSettingsPage } from '../features/providers/ProviderSettingsPage'
 import { AppShell } from './AppShell'
 
 const HomePage = () => (
@@ -112,12 +113,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'settings/providers',
-        element: (
-          <SimplePage
-            description="后续可以在这里接入 DeepSeek 等兼容模型。"
-            heading="模型与密钥"
-          />
-        ),
+        element: <ProviderSettingsPage />,
       },
     ],
   },
