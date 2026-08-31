@@ -17,6 +17,8 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "e2e": "playwright test",
     "lint": "eslint .",
+    "content:validate": "tsx scripts/content/validate-catalog.ts",
+    "content:video-health": "tsx scripts/content/video-health.ts",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build && npm run e2e"
   },
   "devDependencies": {

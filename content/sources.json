@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "sources": [],
+  "instructions": "Add approved source manifests here. Normalize every source into content/canonical/recipes.jsonl before importing."
+}
