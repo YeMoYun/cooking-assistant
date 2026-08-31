@@ -1,4 +1,4 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
@@ -30,7 +30,12 @@ const buildDatabaseBackedApp = async (
   const database = openDatabase(paths.databasePath, paths.migrationsDirectory);
   try {
     const secretStore = await DpapiSecretStore.create();
-    const app = buildApp({ ...options, database, secretStore });
+    const app = buildApp({
+      ...options,
+      database,
+      secretStore,
+      visionTempDirectory: join(paths.dataDirectory, 'vision-temp'),
+    });
     app.addHook('onClose', (_instance, done) => {
       if (database.open) {
         database.close();

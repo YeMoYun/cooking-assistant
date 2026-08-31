@@ -14,7 +14,15 @@ import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js'
 import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
 import { registerShoppingRoutes } from './features/shopping/shopping-routes.js';
 import { registerProviderRoutes } from './features/providers/provider-routes.js';
+import { JsonModelClient } from './features/providers/json-model-client.js';
 import type { SecretStore } from './features/providers/secret-store.js';
+import {
+  DatabaseVisionProviderSource,
+  QwenVlAdapter,
+} from './features/vision/qwen-vl-adapter.js';
+import { VisionImagePipeline } from './features/vision/image-pipeline.js';
+import { registerVisionRoutes } from './features/vision/vision-routes.js';
+import { VisionService } from './features/vision/vision-service.js';
 import { errorHandler } from './plugins/error-handler.js';
 import {
   DEFAULT_REQUEST_BODY_LIMIT,
@@ -67,6 +75,7 @@ export interface BuildAppOptions {
   readonly secureCookies?: boolean;
   readonly secretStore?: SecretStore;
   readonly sessionTtlMs?: number;
+  readonly visionTempDirectory?: string;
   readonly webDistDirectory?: string;
 }
 
@@ -312,6 +321,19 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
         registerProviderRoutes(app, options.database, options.secretStore, {
           allowLoopbackHttp: options.allowLoopbackProviderHttp ?? false,
         });
+        if (options.visionTempDirectory !== undefined) {
+          const modelClient = new JsonModelClient(options.secretStore);
+          const visionAdapter = new QwenVlAdapter(
+            new DatabaseVisionProviderSource(options.database),
+            modelClient,
+          );
+          registerVisionRoutes(app, {
+            imagePipeline: new VisionImagePipeline({
+              tempDirectory: options.visionTempDirectory,
+            }),
+            service: new VisionService(options.database, visionAdapter),
+          });
+        }
       }
     }
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
