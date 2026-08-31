@@ -6,7 +6,7 @@ import {
 import { AppError } from '@xiaochu/shared';
 import type { FastifyInstance } from 'fastify';
 import {
-  SESSION_COOKIE_NAME,
+  readSessionIdFromCookieHeader,
   type MemorySessionStore,
   type RandomBytes,
 } from './session.js';
@@ -188,24 +188,6 @@ const getSingleHeader = (
   value: string | string[] | undefined,
 ): string | undefined => typeof value === 'string' ? value : undefined;
 
-const readSessionCookie = (cookieHeader: string | undefined): string | undefined => {
-  if (cookieHeader === undefined) {
-    return undefined;
-  }
-
-  const prefix = `${SESSION_COOKIE_NAME}=`;
-  const matches = cookieHeader
-    .split(';')
-    .map((part) => part.trim())
-    .filter((part) => part.startsWith(prefix));
-
-  if (matches.length !== 1) {
-    return undefined;
-  }
-
-  return matches[0]?.slice(prefix.length);
-};
-
 export const installRequestSecurity = (
   app: FastifyInstance,
   options: RequestSecurityOptions,
@@ -283,7 +265,7 @@ export const installRequestSecurity = (
       throw forbidden();
     }
 
-    const sessionId = readSessionCookie(
+    const sessionId = readSessionIdFromCookieHeader(
       getSingleHeader(request.headers.cookie),
     );
     const csrfToken = getSingleHeader(request.headers['x-csrf-token']);

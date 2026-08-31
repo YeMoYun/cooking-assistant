@@ -11,6 +11,8 @@ import Fastify, {
 import { registerRecipeNoteRoutes } from './features/recipes/note-routes.js';
 import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
+import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
+import { registerShoppingRoutes } from './features/shopping/shopping-routes.js';
 import { errorHandler } from './plugins/error-handler.js';
 import {
   DEFAULT_REQUEST_BODY_LIMIT,
@@ -299,6 +301,8 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
       registerRecipeSearchRoutes(app, options.database);
       registerRecipeRoutes(app, options.database);
       registerRecipeNoteRoutes(app, options.database);
+      registerInventoryRoutes(app, options.database);
+      registerShoppingRoutes(app, options.database);
     }
     app.get('/api/health', () => ({ data: { status: 'ok' } }));
     app.get('/api/bootstrap', {

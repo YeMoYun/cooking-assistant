@@ -41,6 +41,26 @@ const isOpaqueToken = (token: string): boolean => (
   && /^[A-Za-z0-9_-]+$/u.test(token)
 );
 
+export const readSessionIdFromCookieHeader = (
+  cookieHeader: string | undefined,
+): string | undefined => {
+  if (cookieHeader === undefined) {
+    return undefined;
+  }
+
+  const prefix = `${SESSION_COOKIE_NAME}=`;
+  const matches = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith(prefix));
+  if (matches.length !== 1) {
+    return undefined;
+  }
+
+  const value = matches[0]?.slice(prefix.length);
+  return value !== undefined && isOpaqueToken(value) ? value : undefined;
+};
+
 export class MemorySessionStore {
   readonly #now: Clock;
   readonly #randomBytes: RandomBytes;
