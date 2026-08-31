@@ -1,0 +1,1 @@
+export class ActiveTurns { #turns=new Map<string,AbortController>(); begin(sessionId:string){ this.#turns.get(sessionId)?.abort(); const controller=new AbortController(); this.#turns.set(sessionId,controller); return controller } finish(sessionId:string,controller:AbortController){ if(this.#turns.get(sessionId)===controller)this.#turns.delete(sessionId) } }

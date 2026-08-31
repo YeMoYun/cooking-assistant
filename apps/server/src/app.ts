@@ -19,6 +19,7 @@ import { ProviderRepository } from './features/providers/provider-repository.js'
 import type { SecretStore } from './features/providers/secret-store.js';
 import { GuardedVariantAdapter } from './features/variants/variant-adapter.js';
 import { registerVariantRoutes } from './features/variants/variant-routes.js';
+import { registerVoiceRoutes } from './features/voice/stream-route.js';
 import {
   DatabaseVisionProviderSource,
   QwenVlAdapter,
@@ -333,6 +334,7 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
             modelClient,
           ),
         );
+        registerVoiceRoutes(app, options.database, options.secretStore);
         if (options.visionTempDirectory !== undefined) {
           const visionAdapter = new QwenVlAdapter(
             new DatabaseVisionProviderSource(options.database),

@@ -8,4 +8,5 @@ export * from './recipe-variant.js';
 export * from './recipe-search.js';
 export * from './recipes.js';
 export * from './units.js';
+export * from './voice.js';
 export * from './vision.js';
