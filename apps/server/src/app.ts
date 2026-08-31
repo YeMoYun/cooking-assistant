@@ -15,7 +15,10 @@ import { registerInventoryRoutes } from './features/inventory/inventory-routes.j
 import { registerShoppingRoutes } from './features/shopping/shopping-routes.js';
 import { registerProviderRoutes } from './features/providers/provider-routes.js';
 import { JsonModelClient } from './features/providers/json-model-client.js';
+import { ProviderRepository } from './features/providers/provider-repository.js';
 import type { SecretStore } from './features/providers/secret-store.js';
+import { GuardedVariantAdapter } from './features/variants/variant-adapter.js';
+import { registerVariantRoutes } from './features/variants/variant-routes.js';
 import {
   DatabaseVisionProviderSource,
   QwenVlAdapter,
@@ -318,11 +321,19 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
       registerInventoryRoutes(app, options.database);
       registerShoppingRoutes(app, options.database);
       if (options.secretStore !== undefined) {
+        const modelClient = new JsonModelClient(options.secretStore);
         registerProviderRoutes(app, options.database, options.secretStore, {
           allowLoopbackHttp: options.allowLoopbackProviderHttp ?? false,
         });
+        registerVariantRoutes(
+          app,
+          options.database,
+          new GuardedVariantAdapter(
+            new ProviderRepository(options.database),
+            modelClient,
+          ),
+        );
         if (options.visionTempDirectory !== undefined) {
-          const modelClient = new JsonModelClient(options.secretStore);
           const visionAdapter = new QwenVlAdapter(
             new DatabaseVisionProviderSource(options.database),
             modelClient,
