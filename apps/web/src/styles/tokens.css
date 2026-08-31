@@ -16,6 +16,11 @@
   --color-placeholder-mark: oklch(78% 0.09 102);
   --color-focus: oklch(48% 0.17 252);
   --color-shadow: oklch(24% 0.025 68 / 0.12);
+  --color-player: oklch(20% 0.018 68);
+  --color-player-text: oklch(96% 0.012 92);
+  --color-danger: oklch(48% 0.15 28);
+  --color-danger-surface: oklch(94% 0.035 28);
+  --color-safety-surface: oklch(93% 0.055 60);
   --font-sans: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
   --font-display: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
   --space-1: 0.25rem;
@@ -37,6 +42,8 @@
   --content-max: 72rem;
   --reading-max: 44rem;
   --dur-fast: 140ms;
+  --dur-short: 220ms;
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --layer-navigation: 10;
   --safe-bottom: env(safe-area-inset-bottom, 0px);

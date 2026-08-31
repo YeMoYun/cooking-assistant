@@ -178,6 +178,9 @@ export const createApiClient = (
       method,
       signal,
     })
+    if (response.status === 204) {
+      return undefined as T
+    }
     const payload = await parseJson(response)
     if (!response.ok) {
       throw parseProblem(payload, response.status)

@@ -1,0 +1,698 @@
+/* Hallmark · macrostructure: Long Document · tone: soft-playful · anchor hue: warm pear */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
+
+.recipe-detail-page {
+  min-inline-size: 0;
+}
+
+.detail-back-link {
+  display: inline-flex;
+  min-block-size: var(--touch-target);
+  align-items: center;
+  margin-block-end: var(--space-5);
+  color: var(--color-text-soft);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.detail-hero {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-6);
+  margin-block-end: var(--space-10);
+}
+
+.detail-hero__copy {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.detail-hero__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.detail-hero__labels span {
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-surface-warm);
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.detail-hero h1,
+.detail-state h1 {
+  min-inline-size: 0;
+  margin: var(--space-4) 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.detail-hero__copy > p {
+  max-inline-size: 56ch;
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-soft);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.detail-meta {
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-6) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-meta div {
+  min-inline-size: 0;
+  border-block-start: var(--border-thin) solid var(--color-border);
+  padding-block-start: var(--space-2);
+}
+
+.detail-meta dt {
+  color: var(--color-text-soft);
+  font-size: 0.76rem;
+}
+
+.detail-meta dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 750;
+}
+
+.detail-cover {
+  position: relative;
+  min-inline-size: 0;
+  aspect-ratio: 4 / 3;
+  overflow: clip;
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-placeholder);
+}
+
+.detail-cover img {
+  display: block;
+  block-size: 100%;
+  inline-size: 100%;
+  object-fit: cover;
+}
+
+.detail-cover--placeholder {
+  display: grid;
+  place-items: center;
+}
+
+.detail-cover--placeholder span {
+  display: block;
+  block-size: 34%;
+  inline-size: 34%;
+  border: var(--space-2) solid var(--color-placeholder-mark);
+  border-radius: var(--radius-pill);
+}
+
+.detail-reading-column {
+  display: grid;
+  max-inline-size: var(--reading-max);
+  gap: var(--space-12);
+}
+
+.detail-section,
+.video-tutorial,
+.recipe-notes {
+  min-inline-size: 0;
+}
+
+.detail-section__heading,
+.video-tutorial__heading {
+  display: flex;
+  min-inline-size: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-block-end: var(--space-6);
+}
+
+.detail-section__heading h2,
+.video-tutorial__heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.detail-section__heading p,
+.video-tutorial__heading p {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-soft);
+}
+
+.detail-section__heading > span {
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-surface-warm);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ingredient-list,
+.recipe-steps,
+.notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ingredient-row {
+  display: flex;
+  min-inline-size: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-block-start: var(--border-thin) solid var(--color-border);
+  padding-block: var(--space-4);
+}
+
+.ingredient-row:last-child {
+  border-block-end: var(--border-thin) solid var(--color-border);
+}
+
+.ingredient-row__name {
+  display: flex;
+  min-inline-size: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.ingredient-row__name small {
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-2);
+  background: var(--color-peach);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.ingredient-row__name > span {
+  flex-basis: 100%;
+  color: var(--color-text-soft);
+  font-size: 0.82rem;
+}
+
+.ingredient-row__amount {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.recipe-steps {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.recipe-step {
+  display: grid;
+  min-inline-size: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.recipe-step__number {
+  display: grid;
+  block-size: var(--touch-target);
+  inline-size: var(--touch-target);
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-pear);
+  color: var(--color-pear-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.recipe-step__content {
+  min-inline-size: 0;
+  padding-block-start: var(--space-2);
+}
+
+.recipe-step__content h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.recipe-step__instruction {
+  margin: var(--space-2) 0 0;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.recipe-step__ingredients {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+}
+
+.step-guidance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface-warm);
+}
+
+.step-guidance div {
+  min-inline-size: 0;
+}
+
+.step-guidance dt {
+  color: var(--color-text-soft);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.step-guidance dd {
+  margin: var(--space-1) 0 0;
+  line-height: 1.6;
+}
+
+.step-guidance__safety {
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--color-safety-surface);
+  color: var(--color-text);
+}
+
+.video-tutorial {
+  border-block: var(--border-thin) solid var(--color-border);
+  padding-block: var(--space-6);
+}
+
+.video-frame {
+  position: relative;
+  min-inline-size: 0;
+  aspect-ratio: 16 / 9;
+  overflow: clip;
+  border-radius: var(--radius-md);
+  background: var(--color-player);
+  color: var(--color-player-text);
+}
+
+.video-frame video,
+.video-frame iframe {
+  display: block;
+  block-size: 100%;
+  inline-size: 100%;
+  border: 0;
+}
+
+.video-frame__loading {
+  position: absolute;
+  inset-block-end: var(--space-3);
+  inset-inline-start: var(--space-3);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-player);
+  color: var(--color-player-text);
+  font-size: 0.78rem;
+}
+
+.video-fallback {
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--color-surface-warm);
+  color: var(--color-text);
+}
+
+.video-fallback p {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--color-text-soft);
+}
+
+.external-media-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-block-start: var(--space-4);
+}
+
+.external-media-links a {
+  min-block-size: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-soft);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: var(--space-1);
+  white-space: nowrap;
+}
+
+.favorite-control {
+  margin-block-start: var(--space-5);
+}
+
+.favorite-button,
+.video-fallback button,
+.new-note button,
+.note-undo button,
+.note-item__actions button,
+.detail-state button,
+.detail-state a,
+.recipe-actions a,
+.text-button {
+  min-block-size: var(--touch-target);
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--dur-short) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.favorite-button svg {
+  block-size: 1.2rem;
+  inline-size: 1.2rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.favorite-button[aria-pressed="true"] {
+  background: var(--color-pear);
+  color: var(--color-pear-ink);
+}
+
+.favorite-button[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+.favorite-button[data-state="error"] {
+  border-color: var(--color-danger);
+}
+
+.favorite-button[data-state="success"] {
+  border-color: var(--color-pear-strong);
+}
+
+.favorite-control__error,
+.note-item__error,
+.new-note [role="alert"],
+.note-item--editing [role="alert"] {
+  margin: var(--space-2) 0 0;
+  color: var(--color-danger);
+  font-size: 0.82rem;
+}
+
+.recipe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  border-block: var(--border-thin) solid var(--color-border);
+  padding-block: var(--space-6);
+}
+
+.recipe-actions a:first-child {
+  background: var(--color-pear);
+  color: var(--color-pear-ink);
+}
+
+.new-note {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.new-note label,
+.note-item--editing label {
+  font-weight: 750;
+}
+
+.new-note textarea,
+.note-item--editing textarea {
+  inline-size: 100%;
+  min-block-size: 7rem;
+  resize: vertical;
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  line-height: 1.6;
+}
+
+.new-note textarea::placeholder {
+  color: var(--color-text-soft);
+}
+
+.new-note textarea[aria-invalid="true"],
+.note-item--editing textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  background: var(--color-danger-surface);
+  color: var(--color-text);
+}
+
+.new-note button {
+  justify-self: start;
+  margin-block-start: var(--space-2);
+  background: var(--color-pear);
+  color: var(--color-pear-ink);
+}
+
+.notes-empty {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-soft);
+}
+
+.notes-list {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-6);
+}
+
+.note-item {
+  border-block-start: var(--border-thin) solid var(--color-border);
+  padding-block-start: var(--space-4);
+}
+
+.note-item > p:first-child {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.note-item form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.note-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+.text-button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-soft);
+}
+
+.text-button--danger {
+  color: var(--color-danger);
+}
+
+.note-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-block-start: var(--space-5);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-warm);
+  color: var(--color-text);
+}
+
+.detail-state {
+  max-inline-size: var(--reading-max);
+  padding-block: var(--space-8);
+}
+
+.detail-state p {
+  max-inline-size: 55ch;
+  margin: var(--space-4) 0 var(--space-6);
+  color: var(--color-text-soft);
+}
+
+.detail-state a,
+.detail-state button {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-pear);
+  color: var(--color-pear-ink);
+}
+
+.detail-skeleton {
+  display: grid;
+  max-inline-size: var(--reading-max);
+  gap: var(--space-4);
+}
+
+.detail-skeleton span {
+  display: block;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-warm);
+}
+
+.detail-skeleton__back {
+  block-size: 1rem;
+  inline-size: 8rem;
+}
+
+.detail-skeleton__title {
+  block-size: 3rem;
+  inline-size: min(100%, 28rem);
+  margin-block-start: var(--space-4);
+}
+
+.detail-skeleton__meta {
+  block-size: 4rem;
+  inline-size: min(100%, 24rem);
+}
+
+.detail-skeleton__media {
+  aspect-ratio: 16 / 9;
+  inline-size: 100%;
+  border-radius: var(--radius-md) !important;
+}
+
+.detail-skeleton__line {
+  block-size: 1rem;
+  inline-size: 100%;
+}
+
+.detail-skeleton__line--short {
+  inline-size: 64%;
+}
+
+.favorite-button:disabled,
+.video-fallback button:disabled,
+.new-note button:disabled,
+.note-undo button:disabled,
+.note-item__actions button:disabled,
+.text-button:disabled,
+.new-note textarea:disabled,
+.note-item--editing textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (min-width: 48rem) {
+  .detail-hero {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: center;
+    gap: var(--space-10);
+  }
+
+  .detail-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .step-guidance {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .step-guidance__safety {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .detail-back-link:hover,
+  .external-media-links a:hover {
+    color: var(--color-text);
+  }
+
+  .favorite-button:not(:disabled):hover,
+  .video-fallback button:not(:disabled):hover,
+  .new-note button:not(:disabled):hover,
+  .note-undo button:not(:disabled):hover,
+  .note-item__actions button:not(:disabled):hover,
+  .detail-state button:hover,
+  .detail-state a:hover,
+  .recipe-actions a:hover,
+  .text-button:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  .new-note textarea:hover,
+  .note-item--editing textarea:hover {
+    background: var(--color-surface-warm);
+  }
+}
+
+.favorite-button:not(:disabled):active,
+.video-fallback button:not(:disabled):active,
+.new-note button:not(:disabled):active,
+.note-undo button:not(:disabled):active,
+.note-item__actions button:not(:disabled):active,
+.detail-state button:active,
+.detail-state a:active,
+.recipe-actions a:active,
+.text-button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favorite-button,
+  .video-fallback button,
+  .new-note button,
+  .note-undo button,
+  .note-item__actions button,
+  .detail-state button,
+  .detail-state a,
+  .recipe-actions a,
+  .text-button {
+    transition-duration: var(--dur-fast);
+  }
+
+  .favorite-button:not(:disabled):hover,
+  .video-fallback button:not(:disabled):hover,
+  .new-note button:not(:disabled):hover,
+  .note-undo button:not(:disabled):hover,
+  .note-item__actions button:not(:disabled):hover,
+  .detail-state button:hover,
+  .detail-state a:hover,
+  .recipe-actions a:hover,
+  .text-button:not(:disabled):hover {
+    transform: none;
+  }
+}

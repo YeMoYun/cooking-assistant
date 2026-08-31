@@ -2,17 +2,10 @@ import {
   createBrowserRouter,
   Link,
   type RouteObject,
-  useParams,
 } from 'react-router-dom'
 import { RecipeCatalogPage } from '../features/recipes/RecipeCatalogPage'
+import { RecipeDetailPage } from '../features/recipes/RecipeDetailPage'
 import { AppShell } from './AppShell'
-
-const recipePreviews = [
-  { id: 'tomato-eggs', name: '番茄炒蛋', note: '酸甜下饭 · 约 15 分钟' },
-  { id: 'scallion-noodles', name: '葱油拌面', note: '香而不腻 · 约 20 分钟' },
-  { id: 'steamed-egg', name: '家常蒸蛋', note: '嫩滑不蜂窝 · 约 18 分钟' },
-  { id: 'pepper-potato', name: '青椒土豆丝', note: '清脆入味 · 约 20 分钟' },
-] as const
 
 const HomePage = () => (
   <div className="page page--home">
@@ -53,25 +46,6 @@ const HomePage = () => (
     </Link>
   </div>
 )
-
-const RecipeDetailPage = () => {
-  const { recipeId } = useParams()
-  const recipe = recipePreviews.find(({ id }) => id === recipeId)
-
-  return (
-    <div className="page">
-      <section className="page-heading">
-        <h1>食谱教程</h1>
-        <p>{recipe?.name ?? '这道菜'}的超详细文字步骤与视频将在食谱内容接入后显示。</p>
-      </section>
-      <div aria-label="教程内容占位" className="content-placeholder">
-        <span />
-        <span />
-        <span />
-      </div>
-    </div>
-  )
-}
 
 const SimplePage = ({
   description,
