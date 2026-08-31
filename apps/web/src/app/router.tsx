@@ -10,6 +10,7 @@ import { InventoryPage } from '../features/inventory/InventoryPage'
 import { RecognitionConfirmPage } from '../features/inventory/RecognitionConfirmPage'
 import { ShoppingListPage } from '../features/shopping/ShoppingListPage'
 import { ModifyRecipePage } from '../features/variants/ModifyRecipePage'
+import { AssistantPage } from '../features/assistant/AssistantPage'
 import { AppShell } from './AppShell'
 
 const HomePage = () => (
@@ -52,21 +53,6 @@ const HomePage = () => (
   </div>
 )
 
-const SimplePage = ({
-  description,
-  heading,
-}: {
-  readonly description: string
-  readonly heading: string
-}) => (
-  <div className="page">
-    <section className="page-heading">
-      <h1>{heading}</h1>
-      <p>{description}</p>
-    </section>
-  </div>
-)
-
 export const appRoutes: RouteObject[] = [
   {
     element: <AppShell />,
@@ -86,12 +72,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'assistant',
-        element: (
-          <SimplePage
-            description="做饭遇到具体问题时，再从这里发起实时问答。"
-            heading="和小厨 AI 通话"
-          />
-        ),
+        element: <AssistantPage />,
       },
       {
         path: 'my',
