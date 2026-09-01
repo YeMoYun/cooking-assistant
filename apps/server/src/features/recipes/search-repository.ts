@@ -93,7 +93,9 @@ const toCard = (row: RecipeSearchRow): RecipeCard => ({
   id: row.recipe_id,
   title: row.title,
   summary: row.summary,
-  ...(row.cover_url === null ? {} : { coverUrl: row.cover_url }),
+  ...(row.cover_url === null ? {} : {
+    coverUrl: `/api/recipe-covers/${row.recipe_id}`,
+  }),
   totalMinutes: row.total_minutes,
   difficulty: row.difficulty,
   tier: row.tier,

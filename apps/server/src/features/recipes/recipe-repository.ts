@@ -110,6 +110,12 @@ const noteNotFound = (): AppError => new AppError(
   404,
 );
 
+const catalogUpgradeRequired = (): AppError => new AppError(
+  'catalog_upgrade_required',
+  '食谱教程需要更新，请重新导入最新目录',
+  503,
+);
+
 const mapNote = (row: NoteRow): RecipeNote => recipeNoteSchema.parse({
   id: row.id,
   recipeId: row.recipe_id,
@@ -122,7 +128,9 @@ const mapCollectionCard = (row: CollectionRow) => ({
   id: row.recipe_id,
   title: row.title,
   summary: row.summary,
-  ...(row.cover_url === null ? {} : { coverUrl: row.cover_url }),
+  ...(row.cover_url === null ? {} : {
+    coverUrl: `/api/recipe-covers/${row.recipe_id}`,
+  }),
   totalMinutes: row.total_minutes,
   difficulty: row.difficulty,
   tier: row.tier,
@@ -249,7 +257,12 @@ export class RecipeRepository {
         prepMinutes: recipe.prep_minutes,
         cookMinutes: recipe.cook_minutes,
         totalMinutes: recipe.prep_minutes + recipe.cook_minutes,
-        cover: { url: recipe.cover_remote_url, alt: recipe.cover_alt },
+        cover: {
+          url: recipe.cover_remote_url === null
+            ? null
+            : `/api/recipe-covers/${recipe.id}`,
+          alt: recipe.cover_alt,
+        },
         favorite: recipe.is_favorite === 1,
         tags: tags.filter((tag) => tag.tag_kind === 'tag').map((tag) => tag.value),
         tastes: tags.filter((tag) => tag.tag_kind === 'taste').map((tag) => tag.value),
@@ -267,18 +280,36 @@ export class RecipeRepository {
         })),
         notes: notes.map(mapNote),
       };
-      const standardSteps = steps.map((step) => ({
-        id: step.id,
-        number: step.step_number,
-        instruction: step.instruction,
-        ingredientNames: ingredientNamesByStep.get(step.id) ?? [],
-      }));
+      const completeSteps = steps.map((step) => {
+        if (
+          step.duration_seconds_min === null
+          || step.duration_seconds_max === null
+          || step.heat_or_device === null
+          || step.completion_cue === null
+          || step.common_mistake === null
+          || step.safety_requirement === null
+        ) {
+          throw catalogUpgradeRequired();
+        }
+        return {
+          id: step.id,
+          number: step.step_number,
+          instruction: step.instruction,
+          ingredientNames: ingredientNamesByStep.get(step.id) ?? [],
+          durationSecondsMin: step.duration_seconds_min,
+          durationSecondsMax: step.duration_seconds_max,
+          heatOrDevice: step.heat_or_device,
+          completionCue: step.completion_cue,
+          commonMistake: step.common_mistake,
+          safetyRequirement: step.safety_requirement,
+        };
+      });
 
       if (recipe.tier === 'standard') {
         return recipeDetailSchema.parse({
           ...base,
           tier: 'standard',
-          steps: standardSteps,
+          steps: completeSteps,
         });
       }
 
@@ -300,7 +331,7 @@ export class RecipeRepository {
           ...base,
           tier: 'video',
           media: publicMedia,
-          steps: standardSteps,
+          steps: completeSteps,
         });
       }
 
@@ -308,18 +339,7 @@ export class RecipeRepository {
         ...base,
         tier: 'detailed',
         media: publicMedia,
-        steps: steps.map((step) => ({
-          id: step.id,
-          number: step.step_number,
-          instruction: step.instruction,
-          ingredientNames: ingredientNamesByStep.get(step.id) ?? [],
-          durationSecondsMin: step.duration_seconds_min,
-          durationSecondsMax: step.duration_seconds_max,
-          heatOrDevice: step.heat_or_device,
-          completionCue: step.completion_cue,
-          commonMistake: step.common_mistake,
-          safetyRequirement: step.safety_requirement,
-        })),
+        steps: completeSteps,
       });
     });
 
