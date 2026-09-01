@@ -1,24 +1,10 @@
 import type { RecipeDetail } from '@xiaochu/shared'
 
 type RecipeStep = RecipeDetail['steps'][number]
-type DetailedRecipeStep = Extract<
-  RecipeDetail,
-  { tier: 'detailed' }
->['steps'][number]
 
 export type RecipeStepsProps = Readonly<{
-  detailed: boolean
   steps: RecipeDetail['steps']
 }>
-
-const isDetailedStep = (step: RecipeStep): step is DetailedRecipeStep => (
-  'durationSecondsMin' in step
-  && 'durationSecondsMax' in step
-  && 'heatOrDevice' in step
-  && 'completionCue' in step
-  && 'commonMistake' in step
-  && 'safetyRequirement' in step
-)
 
 const formatDuration = (seconds: number): string => {
   if (seconds < 60) {
@@ -37,7 +23,7 @@ const formatDurationRange = (minimum: number, maximum: number): string => (
     : `${formatDuration(minimum)}–${formatDuration(maximum)}`
 )
 
-const DetailedGuidance = ({ step }: { readonly step: DetailedRecipeStep }) => (
+const StepGuidance = ({ step }: { readonly step: RecipeStep }) => (
   <dl className="step-guidance">
     <div>
       <dt>预计时间</dt>
@@ -62,12 +48,12 @@ const DetailedGuidance = ({ step }: { readonly step: DetailedRecipeStep }) => (
   </dl>
 )
 
-export const RecipeSteps = ({ detailed, steps }: RecipeStepsProps) => (
+export const RecipeSteps = ({ steps }: RecipeStepsProps) => (
   <section aria-labelledby="recipe-steps-title" className="detail-section">
     <header className="detail-section__heading">
       <div>
         <h2 id="recipe-steps-title">完整步骤</h2>
-        <p>{detailed ? '每一步都带判断标准和失败避坑。' : '按顺序做完，不跳步。'}</p>
+        <p>每一步都写明时间、火候、完成判断和失败避坑。</p>
       </div>
       <span>{steps.length} 步</span>
     </header>
@@ -87,9 +73,7 @@ export const RecipeSteps = ({ detailed, steps }: RecipeStepsProps) => (
                 {step.ingredientNames.join('、')}
               </p>
             )}
-            {detailed && isDetailedStep(step) && (
-              <DetailedGuidance step={step} />
-            )}
+            <StepGuidance step={step} />
           </div>
         </li>
       ))}

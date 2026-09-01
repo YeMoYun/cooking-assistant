@@ -211,10 +211,7 @@ export const RecipeDetailPage = () => {
           ingredients={recipe.ingredients}
           servings={recipe.servings}
         />
-        <RecipeSteps
-          detailed={recipe.tier === 'detailed'}
-          steps={recipe.steps}
-        />
+        <RecipeSteps steps={recipe.steps} />
 
         <nav aria-label="食谱后续操作" className="recipe-actions">
           <Link to={`/recipes/${encodeURIComponent(recipe.id)}/adapt`}>
