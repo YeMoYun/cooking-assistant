@@ -1,6 +1,12 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { normalizeUnit, recipeImportSchema, type RecipeImport, type Unit } from '@xiaochu/shared';
+import {
+  createConfiguredModelStepEnricher,
+  needsModelEnrichment,
+  type ModelStepEnricher,
+} from './model-step-enricher.js';
+import { enrichRecipeStep, type StepEnrichmentInput } from './step-enricher.js';
 
 interface SourceIngredient { readonly name?: unknown; readonly weight?: unknown; }
 interface SourceInstruction { readonly description?: unknown; readonly imgLink?: unknown; }
@@ -67,7 +73,17 @@ const techniquesFor = (instructions: readonly SourceInstruction[]): string[] => 
     .filter((technique) => joined.includes(technique)).slice(0, 5);
 };
 
-const convert = (source: SourceRecipe): RecipeImport | undefined => {
+interface ConversionCounters {
+  modelEnriched: number;
+  modelFailed: number;
+  modelSkipped: number;
+}
+
+const convert = async (
+  source: SourceRecipe,
+  modelEnricher: ModelStepEnricher | undefined,
+  counters: ConversionCounters,
+): Promise<RecipeImport | undefined> => {
   const id = text(source.recipeID, 40);
   const title = text(source.recipeName, 100);
   const instructions = Array.isArray(source.instructions)
@@ -101,11 +117,43 @@ const convert = (source: SourceRecipe): RecipeImport | undefined => {
   });
   if (ingredients.length === 0) return undefined;
 
+  const steps = [];
+  for (const [index, step] of instructions.entries()) {
+    const input: StepEnrichmentInput = {
+      instruction: text(step.description),
+      number: index + 1,
+      ingredients,
+      ...(index > 0
+        ? { previousInstruction: text(instructions[index - 1]?.description) }
+        : {}),
+      ...(index + 1 < instructions.length
+        ? { nextInstruction: text(instructions[index + 1]?.description) }
+        : {}),
+    };
+    const fallback = enrichRecipeStep(input);
+    if (!needsModelEnrichment(input, fallback)) {
+      steps.push(fallback);
+      continue;
+    }
+    if (modelEnricher === undefined) {
+      counters.modelSkipped += 1;
+      steps.push(fallback);
+      continue;
+    }
+    try {
+      steps.push(await modelEnricher.enrich(input, fallback));
+      counters.modelEnriched += 1;
+    } catch {
+      counters.modelFailed += 1;
+      steps.push(fallback);
+    }
+  }
+
   const summary = text(source.briefDes, 500) || `${title}的家常做法，共 ${instructions.length} 个步骤。`;
   const recipe = {
     schemaVersion: 1 as const,
     sourceKey: `mirecipe:${id}`,
-    contentVersion: 'mirecipe-new1',
+    contentVersion: 'mirecipe-rich2',
     title,
     aliases: [],
     summary,
@@ -120,11 +168,7 @@ const convert = (source: SourceRecipe): RecipeImport | undefined => {
     cover: { alt: `${title}成品图` },
     media: [],
     ingredients,
-    steps: instructions.map((step, index) => ({
-      number: index + 1,
-      instruction: text(step.description),
-      ingredientNames: [],
-    })),
+    steps,
   };
   const parsed = recipeImportSchema.safeParse(recipe);
   return parsed.success ? parsed.data : undefined;
@@ -135,26 +179,52 @@ const valueFor = (name: string, fallback: string): string => {
   return resolve(index === -1 ? fallback : process.argv[index + 1] ?? fallback);
 };
 
+const optionalValueFor = (name: string): string | undefined => {
+  const index = process.argv.indexOf(name);
+  const value = index === -1 ? undefined : process.argv[index + 1];
+  return value === undefined || value.trim() === '' ? undefined : value.trim();
+};
+
 const main = async (): Promise<void> => {
   const input = valueFor('--input', 'content/raw/mirecipe/recipeData-new1.json');
   const output = valueFor('--output', 'content/canonical/recipes.jsonl');
   const report = valueFor('--report', 'content/reports/mirecipe-conversion.json');
+  const providerId = optionalValueFor('--provider-id');
+  let modelEnricher: ModelStepEnricher | undefined;
+  let providerUnavailable = false;
+  try {
+    modelEnricher = await createConfiguredModelStepEnricher(providerId);
+  } catch {
+    providerUnavailable = providerId !== undefined;
+  }
   const raw: unknown = JSON.parse(await readFile(input, 'utf8'));
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('MIRecipe root must be an object');
   const recipes: RecipeImport[] = [];
+  const counters: ConversionCounters = { modelEnriched: 0, modelFailed: 0, modelSkipped: 0 };
   let rejected = 0;
-  for (const value of Object.values(raw)) {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) { rejected += 1; continue; }
-    const converted = convert(value as SourceRecipe);
-    if (converted === undefined) rejected += 1;
-    else recipes.push(converted);
+  try {
+    for (const value of Object.values(raw)) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) { rejected += 1; continue; }
+      const converted = await convert(value as SourceRecipe, modelEnricher, counters);
+      if (converted === undefined) rejected += 1;
+      else recipes.push(converted);
+    }
+  } finally {
+    modelEnricher?.close();
   }
   if (recipes.length < 10_000) throw new Error(`Only ${recipes.length} valid recipes were produced`);
   await mkdir(dirname(output), { recursive: true });
   await mkdir(dirname(report), { recursive: true });
   await writeFile(output, `${recipes.map((recipe) => JSON.stringify(recipe)).join('\n')}\n`, 'utf8');
-  await writeFile(report, `${JSON.stringify({ source: 'bimissing/recipeData', accepted: recipes.length, rejected }, null, 2)}\n`, 'utf8');
-  process.stdout.write(`${JSON.stringify({ accepted: recipes.length, rejected, output })}\n`);
+  await writeFile(report, `${JSON.stringify({
+    source: 'bimissing/recipeData',
+    accepted: recipes.length,
+    rejected,
+    providerId: providerId ?? null,
+    providerUnavailable,
+    ...counters,
+  }, null, 2)}\n`, 'utf8');
+  process.stdout.write(`${JSON.stringify({ accepted: recipes.length, rejected, output, ...counters })}\n`);
 };
 
 void main().catch((error: unknown) => {
