@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const httpsCoverUrlSchema = z.string().url().refine(
-  (value) => new URL(value).protocol === 'https:',
+  (value) => value.toLocaleLowerCase('en-US').startsWith('https://'),
   'URL must use HTTPS',
 );
 
