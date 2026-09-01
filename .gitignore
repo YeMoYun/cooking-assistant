@@ -47,6 +47,9 @@ content/raw/**
 # Local brainstorming companion sessions
 .superpowers/
 
+# Isolated feature workspaces
+.worktrees/
+
 # Sensitive local material
 *.key
 secrets.dat
