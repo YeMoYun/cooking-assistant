@@ -16,6 +16,12 @@ export interface OutboundUrlPolicyOptions {
   readonly resolveHost?: ResolveProviderHost;
 }
 
+export interface ResourceUrlValidation {
+  readonly normalizedUrl: string;
+  readonly origin: string;
+  readonly developmentLoopback: false;
+}
+
 export class OutboundUrlPolicyError extends Error {
   constructor(
     public readonly code:
@@ -250,6 +256,76 @@ export class OutboundUrlPolicy {
       normalizedBaseUrl,
       origin: normalizedOrigin,
       developmentLoopback,
+    };
+  }
+
+  async validateResourceUrl(input: string): Promise<ResourceUrlValidation> {
+    if (
+      input.length === 0
+      || input.length > 4_096
+      || /[\\\u0000-\u001f\u007f]/u.test(input)
+      || input !== input.trim()
+    ) {
+      throw new OutboundUrlPolicyError(
+        'invalid_provider_url',
+        'Resource URL is invalid',
+      );
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(input);
+    } catch {
+      throw new OutboundUrlPolicyError(
+        'invalid_provider_url',
+        'Resource URL is invalid',
+      );
+    }
+
+    const hostname = normalizeHostname(parsed.hostname);
+    if (
+      parsed.protocol !== 'https:'
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+      || parsed.hash.length > 0
+      || hostname.length === 0
+      || METADATA_HOSTS.has(hostname)
+      || hostname.endsWith('.metadata.google.internal')
+    ) {
+      throw new OutboundUrlPolicyError(
+        'unsafe_provider_url',
+        'Resource URL is not allowed',
+      );
+    }
+
+    const literalFamily = isIP(hostname);
+    let addresses: readonly ResolvedAddress[];
+    try {
+      addresses = literalFamily === 4 || literalFamily === 6
+        ? [{ address: hostname, family: literalFamily }]
+        : await this.#resolveHost(hostname);
+    } catch (error) {
+      if (error instanceof OutboundUrlPolicyError) throw error;
+      throw new OutboundUrlPolicyError(
+        'provider_dns_failed',
+        'Resource host could not be resolved',
+      );
+    }
+    if (addresses.length === 0) {
+      throw new OutboundUrlPolicyError(
+        'provider_dns_failed',
+        'Resource host could not be resolved',
+      );
+    }
+    addresses.forEach((address) => validatePublicAddress(address, false));
+
+    const authorityHost = literalFamily === 6 ? `[${hostname}]` : hostname;
+    const origin = `https://${authorityHost}${parsed.port.length === 0 ? '' : `:${parsed.port}`}`;
+    parsed.hostname = hostname;
+    return {
+      normalizedUrl: parsed.toString(),
+      origin,
+      developmentLoopback: false,
     };
   }
 

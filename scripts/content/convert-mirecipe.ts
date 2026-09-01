@@ -7,6 +7,7 @@ import {
   type ModelStepEnricher,
 } from './model-step-enricher.js';
 import { enrichRecipeStep, type StepEnrichmentInput } from './step-enricher.js';
+import { readCoverManifest } from './cover-manifest.js';
 
 interface SourceIngredient { readonly name?: unknown; readonly weight?: unknown; }
 interface SourceInstruction { readonly description?: unknown; readonly imgLink?: unknown; }
@@ -83,6 +84,7 @@ const convert = async (
   source: SourceRecipe,
   modelEnricher: ModelStepEnricher | undefined,
   counters: ConversionCounters,
+  coverUrl: string | undefined,
 ): Promise<RecipeImport | undefined> => {
   const id = text(source.recipeID, 40);
   const title = text(source.recipeName, 100);
@@ -150,9 +152,10 @@ const convert = async (
   }
 
   const summary = text(source.briefDes, 500) || `${title}的家常做法，共 ${instructions.length} 个步骤。`;
+  const sourceKey = `mirecipe:${id}`;
   const recipe = {
     schemaVersion: 1 as const,
-    sourceKey: `mirecipe:${id}`,
+    sourceKey,
     contentVersion: 'mirecipe-rich2',
     title,
     aliases: [],
@@ -165,7 +168,10 @@ const convert = async (
     taste: [],
     techniques: techniquesFor(instructions),
     tags: ['中文食谱', instructions.length <= 6 ? '步骤较少' : '步骤完整'],
-    cover: { alt: `${title}成品图` },
+    cover: {
+      ...(coverUrl === undefined ? {} : { remoteUrl: coverUrl }),
+      alt: `${title}成品图`,
+    },
     media: [],
     ingredients,
     steps,
@@ -189,6 +195,8 @@ const main = async (): Promise<void> => {
   const input = valueFor('--input', 'content/raw/mirecipe/recipeData-new1.json');
   const output = valueFor('--output', 'content/canonical/recipes.jsonl');
   const report = valueFor('--report', 'content/reports/mirecipe-conversion.json');
+  const coverManifestPath = valueFor('--cover-manifest', 'content/canonical/recipe-covers.jsonl');
+  const coverManifest = await readCoverManifest(coverManifestPath);
   const providerId = optionalValueFor('--provider-id');
   let modelEnricher: ModelStepEnricher | undefined;
   let providerUnavailable = false;
@@ -205,7 +213,13 @@ const main = async (): Promise<void> => {
   try {
     for (const value of Object.values(raw)) {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) { rejected += 1; continue; }
-      const converted = await convert(value as SourceRecipe, modelEnricher, counters);
+      const sourceKey = `mirecipe:${text((value as SourceRecipe).recipeID, 40)}`;
+      const converted = await convert(
+        value as SourceRecipe,
+        modelEnricher,
+        counters,
+        coverManifest.get(sourceKey)?.url,
+      );
       if (converted === undefined) rejected += 1;
       else recipes.push(converted);
     }
@@ -222,6 +236,7 @@ const main = async (): Promise<void> => {
     rejected,
     providerId: providerId ?? null,
     providerUnavailable,
+    coversAssigned: recipes.filter((recipe) => recipe.cover.remoteUrl !== undefined).length,
     ...counters,
   }, null, 2)}\n`, 'utf8');
   process.stdout.write(`${JSON.stringify({ accepted: recipes.length, rejected, output, ...counters })}\n`);

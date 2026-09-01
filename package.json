@@ -20,6 +20,7 @@
     "content:validate": "tsx scripts/content/validate-catalog.ts",
     "content:video-health": "tsx scripts/content/video-health.ts",
     "content:convert-mirecipe": "tsx scripts/content/convert-mirecipe.ts",
+    "content:build-covers": "tsx scripts/content/build-cover-manifest.ts",
     "content:apply-videos": "tsx scripts/content/apply-video-manifest.ts",
     "start:local": "powershell -ExecutionPolicy Bypass -File ./scripts/start-local.ps1",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build && npm run e2e"
