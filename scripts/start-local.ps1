@@ -7,12 +7,11 @@ if ($nodeVersion -notmatch '^v24\.') {
 }
 
 $healthUrl = 'http://localhost:4173/api/health'
+$serverAlreadyRunning = $false
 try {
   $existing = Invoke-WebRequest -UseBasicParsing -Uri $healthUrl -TimeoutSec 2
   if ($existing.StatusCode -eq 200) {
-    Start-Process 'http://localhost:4173'
-    Write-Host 'XiaoChu is already running at http://localhost:4173'
-    exit 0
+    $serverAlreadyRunning = $true
   }
 } catch {
   # A connection failure means a local server needs to be started.
@@ -42,6 +41,23 @@ try {
   $stderrPath = Join-Path $runtimeDirectory 'server.stderr.log'
   $pidPath = Join-Path $runtimeDirectory 'server.pid'
   $serverEntry = Join-Path $projectRoot 'apps\server\dist\index.js'
+  if ($serverAlreadyRunning) {
+    if (-not (Test-Path -LiteralPath $pidPath)) {
+      throw 'Port 4173 is already in use, but the XiaoChu server PID file is missing.'
+    }
+    $existingServerPid = Get-Content -LiteralPath $pidPath -ErrorAction SilentlyContinue
+    if ($existingServerPid -notmatch '^\d+$') {
+      throw 'Port 4173 is already in use, but the XiaoChu server PID file is invalid.'
+    }
+    $existingProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $existingServerPid" -ErrorAction SilentlyContinue
+    $expectedEntry = $serverEntry.ToLowerInvariant()
+    $existingCommand = if ($null -eq $existingProcess.CommandLine) { '' } else { $existingProcess.CommandLine.ToLowerInvariant() }
+    if ($null -eq $existingProcess -or -not $existingCommand.Contains($expectedEntry)) {
+      throw 'Port 4173 is occupied by an unverified process. Close it manually and run the launcher again.'
+    }
+    Stop-Process -Id ([int]$existingServerPid) -Force
+    Write-Host 'Restarting XiaoChu with the latest local build...'
+  }
   $server = Start-Process node -ArgumentList @($serverEntry) -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
   Set-Content -LiteralPath $pidPath -Value $server.Id -Encoding ascii
 
@@ -72,7 +88,7 @@ try {
       $catalogImportRunning = Get-Process -Id ([int]$existingImportPid) -ErrorAction SilentlyContinue
     }
   }
-  if ($catalogStatus.active -lt 10000 -and $fullCatalogAvailable -and -not $catalogImportRunning) {
+  if ($catalogStatus.rich -lt 10000 -and $fullCatalogAvailable -and -not $catalogImportRunning) {
     $catalogImportStdout = Join-Path $runtimeDirectory 'catalog-import.stdout.log'
     $catalogImportStderr = Join-Path $runtimeDirectory 'catalog-import.stderr.log'
     $importProcess = Start-Process node -ArgumentList @(
@@ -82,7 +98,7 @@ try {
       '--mode', 'replace'
     ) -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $catalogImportStdout -RedirectStandardError $catalogImportStderr
     Set-Content -LiteralPath $catalogImportPidPath -Value $importProcess.Id -Encoding ascii
-    Write-Host 'The full 10,520-recipe catalogue is importing in the background.'
+    Write-Host 'The enhanced 10,520-recipe catalogue is importing in the background.'
     Write-Host "You can use the starter recipes now. Reload later to see the full catalogue. Import log: $catalogImportStdout"
   } elseif ($catalogImportRunning) {
     Write-Host 'The full recipe catalogue is already importing in the background.'

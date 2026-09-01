@@ -552,7 +552,7 @@ export const importRecipeCatalog = async (
     const stagedRows = db.prepare(`
       SELECT line, source_key, canonical_json
       FROM temp.recipe_import_stage ORDER BY line
-    `);
+    `).all() as StageRow[];
     let transactionStarted = false;
     try {
       db.exec('BEGIN IMMEDIATE');
@@ -579,7 +579,7 @@ export const importRecipeCatalog = async (
       }
 
       let index = 0;
-      for (const row of stagedRows.iterate() as IterableIterator<StageRow>) {
+      for (const row of stagedRows) {
         const recipe = JSON.parse(row.canonical_json) as NormalizedRecipe;
         const result = writeRecipe(db, recipe, timestamp);
         if (result.disposition === 'inserted') {
