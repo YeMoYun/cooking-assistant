@@ -76,8 +76,9 @@ if (isMainModule()) {
       })
     : buildProductionApp();
 
-  void appPromise.then((app) => startServer(app)).catch(() => {
+  void appPromise.then((app) => startServer(app)).catch((error: unknown) => {
     process.stderr.write('Unable to start the local server.\n');
+    console.error(error);
     process.exitCode = 1;
   });
 }

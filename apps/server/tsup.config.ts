@@ -5,6 +5,7 @@ export default defineConfig({
   format: ['esm'],
   platform: 'node',
   outDir: 'dist',
+  clean: true,
   sourcemap: true,
   noExternal: ['@xiaochu/shared'],
 });

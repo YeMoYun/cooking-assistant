@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts --vite-development",
-    "build": "tsup --config tsup.config.ts && copyfiles -u 1 src/db/migrations/*.sql dist/db/migrations",
+    "build": "tsup --config tsup.config.ts && copyfiles -u 1 src/db/migrations/*.sql dist",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
