@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
+import { ClearLocalDataPanel } from '../settings/ClearLocalDataPanel';
 
 interface RecipeCard { readonly id: string; readonly title: string; readonly summary: string; }
 interface Collection { readonly items: readonly RecipeCard[]; }
@@ -46,6 +47,7 @@ export const MyPage = () => {
         {errors.sessions ? <Empty>暂时无法读取会话记录。</Empty> : sessions?.length === 0 ? <Empty>还没有助手会话。</Empty> : sessions?.map((item) => <p key={item.id}>{item.providerName} · {new Date(item.startedAt).toLocaleString()} · {item.status}</p>)}
       </section>
       <section className="kitchen-panel"><h2>模型与本地数据</h2><Link className="settings-link" to="/settings/providers">管理模型密钥与连接</Link></section>
+      <ClearLocalDataPanel />
     </section>
   );
 };

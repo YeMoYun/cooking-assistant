@@ -119,6 +119,13 @@ export class MemorySessionStore {
       && timingSafeEqual(candidateHash, session.csrfHash);
   }
 
+  clear(): void {
+    for (const session of this.#sessions.values()) {
+      session.csrfHash.fill(0);
+    }
+    this.#sessions.clear();
+  }
+
   #createToken(): string {
     const bytes = this.#randomBytes(TOKEN_BYTES);
     if (bytes.length !== TOKEN_BYTES) {

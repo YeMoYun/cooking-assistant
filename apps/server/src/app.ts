@@ -10,6 +10,7 @@ import Fastify, {
 } from 'fastify';
 import { registerRecipeNoteRoutes } from './features/recipes/note-routes.js';
 import { registerPendingActionRoutes } from './features/actions/pending-action-routes.js';
+import { registerPrivacyRoutes } from './features/privacy/privacy-routes.js';
 import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
@@ -337,6 +338,13 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
           ),
         );
         registerVoiceRoutes(app, options.database, options.secretStore);
+        registerPrivacyRoutes(app, {
+          database: options.database,
+          secretStore: options.secretStore,
+          sessions,
+          temporaryDirectories: options.visionTempDirectory === undefined
+            ? [] : [options.visionTempDirectory],
+        });
         if (options.visionTempDirectory !== undefined) {
           const visionAdapter = new QwenVlAdapter(
             new DatabaseVisionProviderSource(options.database),
