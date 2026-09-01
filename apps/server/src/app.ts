@@ -12,6 +12,7 @@ import { registerRecipeNoteRoutes } from './features/recipes/note-routes.js';
 import { registerPendingActionRoutes } from './features/actions/pending-action-routes.js';
 import { registerPrivacyRoutes } from './features/privacy/privacy-routes.js';
 import { registerRecipeRoutes } from './features/recipes/recipe-routes.js';
+import { registerRecipeCoverRoutes } from './features/recipes/recipe-cover-routes.js';
 import { registerRecipeSearchRoutes } from './features/recipes/search-routes.js';
 import { registerInventoryRoutes } from './features/inventory/inventory-routes.js';
 import { registerShoppingRoutes } from './features/shopping/shopping-routes.js';
@@ -77,6 +78,7 @@ export interface BuildAppOptions {
   readonly rateLimits?: Partial<
     Readonly<Record<RateLimitPolicyName, RouteRateLimitPolicy>>
   >;
+  readonly recipeCoverCacheDirectory?: string;
   readonly recipeMediaOrigins?: readonly string[];
   readonly secureCookies?: boolean;
   readonly secretStore?: SecretStore;
@@ -290,7 +292,10 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
   });
 
   app.addHook('onSend', (request, reply, payload, done) => {
-    if (request.url === '/api' || request.url.startsWith('/api/')) {
+    if (
+      (request.url === '/api' || request.url.startsWith('/api/'))
+      && !request.url.startsWith('/api/recipe-covers/')
+    ) {
       reply.header('Cache-Control', 'no-store');
     }
     done(null, payload);
@@ -318,6 +323,13 @@ export const buildApp = (options: BuildAppOptions = {}): FastifyInstance => {
 
   app.after(() => {
     if (options.database !== undefined) {
+      if (options.recipeCoverCacheDirectory !== undefined) {
+        registerRecipeCoverRoutes(
+          app,
+          options.database,
+          options.recipeCoverCacheDirectory,
+        );
+      }
       registerRecipeSearchRoutes(app, options.database);
       registerRecipeRoutes(app, options.database);
       registerRecipeNoteRoutes(app, options.database);

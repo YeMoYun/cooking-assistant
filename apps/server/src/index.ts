@@ -33,6 +33,7 @@ const buildDatabaseBackedApp = async (
     const app = buildApp({
       ...options,
       database,
+      recipeCoverCacheDirectory: join(paths.dataDirectory, 'cover-cache'),
       secretStore,
       visionTempDirectory: join(paths.dataDirectory, 'vision-temp'),
     });
