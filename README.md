@@ -39,7 +39,15 @@ npm run content:video-health -- --input content/canonical/recipes.jsonl --output
 npx tsx scripts/content/import-catalog.ts --input content/canonical/recipes.jsonl --mode replace
 ```
 
-仓库不伪造“万道菜谱”数据；若 `content/canonical/recipes.jsonl` 尚未提供，启动脚本会导入三道示例菜用于本地功能测试。
+仓库当前内置由 MIRecipe 规范化得到的 10,520 道中文标准文字食谱；原始压缩包不入库，来源地址、SHA-256 和转换脚本均可复现。视频与超详细教程使用独立质量门槛，当前不会把图片步骤冒充成视频。若规范内容包缺失，启动脚本才会退回三道示例菜用于功能测试。
+
+重新生成正文库：
+
+```powershell
+# 先按 content/sources.json 下载并校验原始压缩包，解压到 content/raw/mirecipe
+npm run content:convert-mirecipe
+npm run content:validate -- --input content/canonical/recipes.jsonl --min-recipes 10000
+```
 
 ## 模型设置
 

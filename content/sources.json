@@ -1,5 +1,13 @@
 {
   "version": 1,
-  "sources": [],
-  "instructions": "Add approved source manifests here. Normalize every source into content/canonical/recipes.jsonl before importing."
+  "sources": [
+    {
+      "id": "mirecipe-new1",
+      "url": "https://raw.githubusercontent.com/bimissing/recipeData/main/recipeData-new1.json.zip",
+      "sha256": "1c9a1e660995bbc523dcc33271cc3b4229c5ec46fe33117a3fd6a980acfde927",
+      "expectedRawRecipes": 10566,
+      "content": "Chinese recipe titles, ingredients, seasonings and ordered text/image steps"
+    }
+  ],
+  "instructions": "Download source archives into ignored content/raw, verify SHA-256, then normalize into content/canonical/recipes.jsonl."
 }
