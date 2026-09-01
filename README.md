@@ -1,0 +1,48 @@
+# 小厨（XiaoChu）本地食谱与烹饪助手
+
+小厨是一个仅在本机运行的手机优先 PWA。食谱教程和 AI 助手是两个独立模块：食谱页负责浏览、搜索、视频和详细文字步骤；助手页负责做饭过程中的实时文字/语音问答、受控上下文和待确认操作。
+
+## 当前功能
+
+- 多卡片食谱搜索、筛选、收藏、最近浏览、视频与完整文字教程
+- 冰箱照片识别后编辑确认、库存和购物清单
+- 结构化 AI 改菜谱，确认后保存且不修改原食谱
+- DeepSeek、通义千问和自定义 OpenAI 兼容模型配置，Key 由 Windows DPAPI 加密保存
+- 独立文字/语音助手，支持打断、静音、模型切换和显式上下文授权
+- 一键清空个人数据和模型密钥，同时保留内置食谱
+
+## 本地启动
+
+要求 Windows 10/11、Node.js 24.x 和 npm。首次运行：
+
+```powershell
+Set-Location 'D:\Codex\cooking-assistant-pwa'
+powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+脚本会构建前后端、导入食谱并在浏览器打开 `http://localhost:4173`。服务只监听 `127.0.0.1:4173`。日志和 PID 位于 `%LOCALAPPDATA%\XiaoChu\runtime`，SQLite、加密密钥和临时数据位于 `%LOCALAPPDATA%\XiaoChu`。
+
+开发模式：
+
+```powershell
+npm install
+npm run dev
+```
+
+## 导入大规模食谱包
+
+每行一个符合共享契约的 JSON 食谱：
+
+```powershell
+npm run content:validate -- --input content/canonical/recipes.jsonl --min-recipes 10000 --min-videos 1000 --min-detailed 100
+npm run content:video-health -- --input content/canonical/recipes.jsonl --output content/reports/video-health.json --probe
+npx tsx scripts/content/import-catalog.ts --input content/canonical/recipes.jsonl --mode replace
+```
+
+仓库不伪造“万道菜谱”数据；若 `content/canonical/recipes.jsonl` 尚未提供，启动脚本会导入三道示例菜用于本地功能测试。
+
+## 模型设置
+
+打开“我的厨房 → 管理模型密钥与连接”，选择 DeepSeek、通义千问或自定义 OpenAI 兼容接口，填写 Base URL、Model ID 和 Key 后先执行连接测试。Key 不进入前端存储、日志或 SQLite；它只保存在当前 Windows 用户的 DPAPI 加密文件中。
+
+详细运行和手动验收见 [本地运行手册](docs/operations/local-runbook.md) 与 [手动验收清单](docs/acceptance/manual-smoke.md)。
