@@ -23,15 +23,18 @@ try {
   & npm run build
   if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
+  Write-Host 'Checking local recipe catalogue...'
+  $catalogStatusJson = (& node --import tsx scripts/content/catalog-status.ts | Select-Object -Last 1)
+  if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect the recipe catalogue.' }
+  $catalogStatus = $catalogStatusJson | ConvertFrom-Json
+
   $canonicalCatalog = Join-Path $projectRoot 'content\canonical\recipes.jsonl'
   $sampleCatalog = Join-Path $projectRoot 'fixtures\recipes\mini-catalog.jsonl'
-  $catalog = if ((Test-Path -LiteralPath $canonicalCatalog) -and (Get-Item -LiteralPath $canonicalCatalog).Length -gt 0) {
-    $canonicalCatalog
-  } else {
-    $sampleCatalog
+  if ($catalogStatus.active -eq 0) {
+    Write-Host 'Preparing a small starter catalogue so the app can open immediately...'
+    & node --import tsx scripts/content/import-catalog.ts --input $sampleCatalog --mode merge
+    if ($LASTEXITCODE -notin @(0, 2)) { throw 'Starter recipe import failed.' }
   }
-  & npx tsx scripts/content/import-catalog.ts --input $catalog --mode merge
-  if ($LASTEXITCODE -notin @(0, 2)) { throw 'Recipe import failed.' }
 
   $runtimeDirectory = Join-Path $env:LOCALAPPDATA 'XiaoChu\runtime'
   New-Item -ItemType Directory -Force -Path $runtimeDirectory | Out-Null
@@ -59,6 +62,31 @@ try {
   Start-Process 'http://localhost:4173'
   Write-Host 'XiaoChu started at http://localhost:4173'
   Write-Host "Server PID: $($server.Id)"
+
+  $fullCatalogAvailable = (Test-Path -LiteralPath $canonicalCatalog) -and (Get-Item -LiteralPath $canonicalCatalog).Length -gt 0
+  $catalogImportPidPath = Join-Path $runtimeDirectory 'catalog-import.pid'
+  $catalogImportRunning = $false
+  if (Test-Path -LiteralPath $catalogImportPidPath) {
+    $existingImportPid = Get-Content -LiteralPath $catalogImportPidPath -ErrorAction SilentlyContinue
+    if ($existingImportPid -match '^\d+$') {
+      $catalogImportRunning = Get-Process -Id ([int]$existingImportPid) -ErrorAction SilentlyContinue
+    }
+  }
+  if ($catalogStatus.active -lt 10000 -and $fullCatalogAvailable -and -not $catalogImportRunning) {
+    $catalogImportStdout = Join-Path $runtimeDirectory 'catalog-import.stdout.log'
+    $catalogImportStderr = Join-Path $runtimeDirectory 'catalog-import.stderr.log'
+    $importProcess = Start-Process node -ArgumentList @(
+      '--import', 'tsx',
+      'scripts/content/import-catalog.ts',
+      '--input', $canonicalCatalog,
+      '--mode', 'replace'
+    ) -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $catalogImportStdout -RedirectStandardError $catalogImportStderr
+    Set-Content -LiteralPath $catalogImportPidPath -Value $importProcess.Id -Encoding ascii
+    Write-Host 'The full 10,520-recipe catalogue is importing in the background.'
+    Write-Host "You can use the starter recipes now. Reload later to see the full catalogue. Import log: $catalogImportStdout"
+  } elseif ($catalogImportRunning) {
+    Write-Host 'The full recipe catalogue is already importing in the background.'
+  }
 } finally {
   Pop-Location
 }

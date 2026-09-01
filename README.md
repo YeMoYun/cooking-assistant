@@ -20,7 +20,7 @@ Set-Location 'D:\Codex\cooking-assistant-pwa'
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
 ```
 
-脚本会构建前后端、导入食谱并在浏览器打开 `http://localhost:4173`。服务只监听 `127.0.0.1:4173`。日志和 PID 位于 `%LOCALAPPDATA%\XiaoChu\runtime`，SQLite、加密密钥和临时数据位于 `%LOCALAPPDATA%\XiaoChu`。
+脚本会构建前后端、准备少量启动食谱并立即在浏览器打开 `http://localhost:4173`。首次运行时，10,520 道完整正文库会在后台一次性导入；导入期间可先使用启动食谱，稍后刷新页面即可。服务只监听 `127.0.0.1:4173`。日志和 PID 位于 `%LOCALAPPDATA%\XiaoChu\runtime`，SQLite、加密密钥和临时数据位于 `%LOCALAPPDATA%\XiaoChu`。
 
 开发模式：
 

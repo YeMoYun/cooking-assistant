@@ -145,7 +145,6 @@ const assertAliasClaim = (
 const validateCatalogAliasOwnership = (
   db: Database.Database,
   mode: ImportMode,
-  recipes: readonly NormalizedRecipe[],
 ): void => {
   const claims = new Map<string, AliasClaim>();
   if (mode === 'merge') {
@@ -170,7 +169,13 @@ const validateCatalogAliasOwnership = (
     }
   }
 
-  for (const recipe of recipes) {
+  const stagedRecipes = db.prepare(`
+    SELECT canonical_json
+    FROM temp.recipe_import_stage
+    ORDER BY line
+  `).iterate() as IterableIterator<{ readonly canonical_json: string }>;
+  for (const row of stagedRecipes) {
+    const recipe = JSON.parse(row.canonical_json) as NormalizedRecipe;
     for (const ingredient of recipe.ingredients) {
       const claim = { ingredientId: ingredient.id, category: ingredient.category };
       assertAliasClaim(claims, ingredient.normalizedName, claim);
@@ -463,7 +468,6 @@ export const importRecipeCatalog = async (
   const { db, inputPath, mode } = options;
   const now = options.now ?? (() => new Date());
   const report = createImportReport(mode, now());
-  const normalizedRecipes: NormalizedRecipe[] = [];
   const seenSourceKeys = new Map<string, number>();
   createStageTable(db);
   const insertStage = db.prepare(`
@@ -520,7 +524,6 @@ export const importRecipeCatalog = async (
           normalized.recipe.tier,
           normalized.canonicalJson,
         );
-        normalizedRecipes.push(normalized.recipe);
         report.accepted += 1;
         report.tierCounts[normalized.recipe.tier] += 1;
       } catch (error) {
@@ -543,13 +546,13 @@ export const importRecipeCatalog = async (
     if (report.accepted === 0) {
       return finishImportReport(report, now());
     }
-    validateCatalogAliasOwnership(db, mode, normalizedRecipes);
+    validateCatalogAliasOwnership(db, mode);
     options.hooks?.onEvent?.({ event: 'before-cutover', accepted: report.accepted });
 
     const stagedRows = db.prepare(`
       SELECT line, source_key, canonical_json
       FROM temp.recipe_import_stage ORDER BY line
-    `).all() as StageRow[];
+    `);
     let transactionStarted = false;
     try {
       db.exec('BEGIN IMMEDIATE');
@@ -575,7 +578,8 @@ export const importRecipeCatalog = async (
         report.deactivated = result.changes;
       }
 
-      for (const [index, row] of stagedRows.entries()) {
+      let index = 0;
+      for (const row of stagedRows.iterate() as IterableIterator<StageRow>) {
         const recipe = JSON.parse(row.canonical_json) as NormalizedRecipe;
         const result = writeRecipe(db, recipe, timestamp);
         if (result.disposition === 'inserted') {
@@ -592,6 +596,7 @@ export const importRecipeCatalog = async (
           sourceKey: row.source_key,
           disposition: result.disposition,
         });
+        index += 1;
       }
 
       db.prepare(`
