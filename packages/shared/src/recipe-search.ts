@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recipeCoverUrlSchema } from './recipe-cover.js';
 
 export const recipeDifficultySchema = z.enum(['easy', 'medium', 'hard']);
 export const recipeTierSchema = z.enum(['standard', 'video', 'detailed']);
@@ -20,7 +21,7 @@ export const recipeCardSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().min(1).max(100),
   summary: z.string().min(1).max(500),
-  coverUrl: z.string().url().optional(),
+  coverUrl: recipeCoverUrlSchema.optional(),
   totalMinutes: z.number().int().positive(),
   difficulty: recipeDifficultySchema,
   tier: recipeTierSchema,

@@ -3,6 +3,7 @@ import {
   recipeCardSchema,
   recipeDifficultySchema,
 } from './recipe-search.js';
+import { recipeCoverUrlSchema } from './recipe-cover.js';
 
 const publicIdSchema = z.string().min(1).max(140);
 const recipeIdSchema = z.string().min(1).max(100);
@@ -13,7 +14,7 @@ const nullableHttpsUrlSchema = z.string().url().refine(
 ).nullable();
 
 export const recipeCoverSchema = z.object({
-  url: nullableHttpsUrlSchema,
+  url: recipeCoverUrlSchema.nullable(),
   alt: z.string().min(1).max(200),
 }).strict();
 
@@ -68,14 +69,11 @@ export const recipeDetailIngredientSchema = z.object({
   note: z.string().min(1).max(200).nullable(),
 }).strict();
 
-const standardRecipeStepSchema = z.object({
+const recipeStepSchema = z.object({
   id: publicIdSchema,
   number: z.number().int().positive(),
   instruction: z.string().min(1).max(2_000),
   ingredientNames: z.array(z.string().min(1).max(80)).max(30),
-}).strict();
-
-const detailedRecipeStepSchema = standardRecipeStepSchema.extend({
   durationSecondsMin: z.number().int().positive(),
   durationSecondsMax: z.number().int().positive(),
   heatOrDevice: z.string().min(1).max(200),
@@ -119,21 +117,21 @@ const recipeDetailBaseShape = {
 export const standardRecipeDetailSchema = z.object({
   ...recipeDetailBaseShape,
   tier: z.literal('standard'),
-  steps: z.array(standardRecipeStepSchema).min(1),
+  steps: z.array(recipeStepSchema).min(1),
 }).strict();
 
 export const videoRecipeDetailSchema = z.object({
   ...recipeDetailBaseShape,
   tier: z.literal('video'),
   media: z.array(recipeDetailMediaSchema).min(1).max(5),
-  steps: z.array(standardRecipeStepSchema).min(1),
+  steps: z.array(recipeStepSchema).min(1),
 }).strict();
 
 export const detailedRecipeDetailSchema = z.object({
   ...recipeDetailBaseShape,
   tier: z.literal('detailed'),
   media: z.array(recipeDetailMediaSchema).min(1).max(5),
-  steps: z.array(detailedRecipeStepSchema).min(1),
+  steps: z.array(recipeStepSchema).min(1),
 }).strict();
 
 export const recipeDetailSchema = z.discriminatedUnion('tier', [

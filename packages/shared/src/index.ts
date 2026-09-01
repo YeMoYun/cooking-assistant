@@ -3,6 +3,7 @@ export * from './kitchen.js';
 export * from './model-stream.js';
 export * from './pending-action.js';
 export * from './providers.js';
+export * from './recipe-cover.js';
 export * from './recipe-detail.js';
 export * from './recipe-variant.js';
 export * from './recipe-search.js';

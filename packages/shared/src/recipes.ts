@@ -242,13 +242,19 @@ const stepSchema = z.object({
   number: z.number().int().positive(),
   instruction: canonicalText(2000),
   ingredientNames: z.array(canonicalText(80)).max(30),
-  durationSecondsMin: z.number().int().positive().optional(),
-  durationSecondsMax: z.number().int().positive().optional(),
-  heatOrDevice: canonicalText(200).optional(),
-  completionCue: canonicalText(500).optional(),
-  commonMistake: canonicalText(500).optional(),
-  safetyRequirement: canonicalText(500).optional(),
-}).strict();
+  durationSecondsMin: z.number().int().positive(),
+  durationSecondsMax: z.number().int().positive(),
+  heatOrDevice: canonicalText(200),
+  completionCue: canonicalText(500),
+  commonMistake: canonicalText(500),
+  safetyRequirement: canonicalText(500),
+}).strict().refine(
+  (step) => step.durationSecondsMin <= step.durationSecondsMax,
+  {
+    path: ['durationSecondsMax'],
+    message: 'Maximum duration cannot be less than minimum duration',
+  },
+);
 
 const identityKey = (value: string): string => value.toLocaleLowerCase('zh-CN');
 
@@ -315,26 +321,6 @@ export const recipeImportSchema = z.object({
         message: 'Step numbers must be contiguous and start at 1',
       });
     }
-    const hasMinimum = step.durationSecondsMin !== undefined;
-    const hasMaximum = step.durationSecondsMax !== undefined;
-    if (hasMinimum !== hasMaximum) {
-      context.addIssue({
-        code: 'custom',
-        path: ['steps', stepIndex, 'durationSecondsMax'],
-        message: 'Step duration minimum and maximum must be supplied together',
-      });
-    } else if (
-      step.durationSecondsMin !== undefined
-      && step.durationSecondsMax !== undefined
-      && step.durationSecondsMin > step.durationSecondsMax
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['steps', stepIndex, 'durationSecondsMax'],
-        message: 'Step duration maximum cannot be less than the minimum',
-      });
-    }
-
     const stepIngredients = new Set<string>();
     step.ingredientNames.forEach((name, referenceIndex) => {
       const key = identityKey(name);
@@ -354,26 +340,6 @@ export const recipeImportSchema = z.object({
       }
       stepIngredients.add(key);
     });
-
-    if (recipe.tier === 'detailed') {
-      const requiredFields = [
-        'durationSecondsMin',
-        'durationSecondsMax',
-        'heatOrDevice',
-        'completionCue',
-        'commonMistake',
-        'safetyRequirement',
-      ] as const;
-      requiredFields.forEach((field) => {
-        if (step[field] === undefined) {
-          context.addIssue({
-            code: 'custom',
-            path: ['steps', stepIndex, field],
-            message: `Detailed recipes require ${field} on every step`,
-          });
-        }
-      });
-    }
   });
 
   if (recipe.tier !== 'standard') {
