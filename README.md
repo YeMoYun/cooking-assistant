@@ -49,6 +49,16 @@ npm run content:convert-mirecipe
 npm run content:validate -- --input content/canonical/recipes.jsonl --min-recipes 10000
 ```
 
+视频采用独立的稳定匹配清单，清单每行包含食谱 `sourceKey` 和一个可嵌入的 HTML5/YouTube/Bilibili 媒体对象。准备好清单后执行：
+
+```powershell
+npm run content:apply-videos -- --recipes content/canonical/recipes.jsonl --manifest content/canonical/video-manifest.jsonl --output content/canonical/recipes-with-video.jsonl --min-videos 1000
+npm run content:video-health -- --input content/canonical/recipes-with-video.jsonl --output content/reports/video-health.json --probe
+npx tsx scripts/content/import-catalog.ts --input content/canonical/recipes-with-video.jsonl --mode replace
+```
+
+格式参见 `content/canonical/video-manifest.example.jsonl`。只有能通过固定域名和 URL 规则的媒体才会进入正式内容包。
+
 ## 模型设置
 
 打开“我的厨房 → 管理模型密钥与连接”，选择 DeepSeek、通义千问或自定义 OpenAI 兼容接口，填写 Base URL、Model ID 和 Key 后先执行连接测试。Key 不进入前端存储、日志或 SQLite；它只保存在当前 Windows 用户的 DPAPI 加密文件中。
