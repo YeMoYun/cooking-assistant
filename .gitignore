@@ -44,6 +44,9 @@ content/raw/**
 **/traces/
 **/screenshots/
 
+# Local brainstorming companion sessions
+.superpowers/
+
 # Sensitive local material
 *.key
 secrets.dat
