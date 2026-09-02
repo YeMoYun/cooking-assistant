@@ -9,7 +9,9 @@ import {
 } from '../../apps/server/src/features/providers/outbound-url-policy.js';
 import { createSafeDispatcher } from '../../apps/server/src/features/providers/safe-dispatcher.js';
 import {
+  createSerializedCoverManifestWriter,
   readCoverManifest,
+  isRetiredCoverUrl,
   writeCoverManifest,
   type CoverManifestRow,
 } from './cover-manifest.js';
@@ -58,7 +60,9 @@ const normalizeImageUrl = (value: unknown): string | undefined => {
       url.protocol = 'https:';
     }
     url.hash = '';
-    return url.protocol === 'https:' ? url.toString() : undefined;
+    return url.protocol === 'https:' && !isRetiredCoverUrl(url.toString())
+      ? url.toString()
+      : undefined;
   } catch {
     return undefined;
   }
@@ -302,11 +306,27 @@ const main = async (): Promise<void> => {
   const sourceRecipes = await loadSourceRecipes(input);
   const allowlist = new Set(canonical.map((recipe) => recipe.sourceKey));
   const manifest = new Map(
-    [...(await readCoverManifest(output))].filter(([sourceKey]) => allowlist.has(sourceKey)),
+    [...(await readCoverManifest(output))].filter(([sourceKey, row]) => (
+      allowlist.has(sourceKey) && !isRetiredCoverUrl(row.url)
+    )),
   );
   const photos: PhotoRecipe[] = [];
   const photosByTitle = new Map<string, PhotoRecipe>();
   const checkedAt = new Date().toISOString();
+  const writeCheckpoint = createSerializedCoverManifestWriter<CoverManifestRow>(
+    (rows) => writeCoverManifest(output, rows),
+  );
+
+  const canonicalBySourceKey = new Map(canonical.map((recipe) => [recipe.sourceKey, recipe]));
+  for (const row of manifest.values()) {
+    const recipe = canonicalBySourceKey.get(row.sourceKey);
+    if (recipe === undefined) continue;
+    const photo = { ...recipe, url: row.url };
+    photos.push(photo);
+    if (!photosByTitle.has(normalizeTitle(recipe.title))) {
+      photosByTitle.set(normalizeTitle(recipe.title), photo);
+    }
+  }
 
   for (const recipe of canonical) {
     const url = lastPhoto(sourceRecipes.get(recipe.sourceKey));
@@ -339,7 +359,7 @@ const main = async (): Promise<void> => {
       checkedAt,
     });
   }
-  await writeCoverManifest(output, manifest.values());
+  await writeCheckpoint(manifest.values());
 
   const pending = canonical.filter((recipe) => !manifest.has(recipe.sourceKey));
   let cursor = 0;
@@ -377,13 +397,13 @@ const main = async (): Promise<void> => {
         semanticFallback += 1;
       }
       if (searched % 10 === 0 || searched === pending.length) {
-        await writeCoverManifest(output, manifest.values());
+        await writeCheckpoint(manifest.values());
         process.stdout.write(`${JSON.stringify({ searched, pending: pending.length, searchMatched, semanticFallback })}\n`);
       }
     }
   });
   await Promise.all(workers);
-  await writeCoverManifest(output, manifest.values());
+  await writeCheckpoint(manifest.values());
   if (manifest.size !== canonical.length) throw new Error(`Cover manifest is incomplete: ${manifest.size}/${canonical.length}`);
   process.stdout.write(`${JSON.stringify({ recipes: canonical.length, covers: manifest.size, searched, searchMatched, semanticFallback, output })}\n`);
 };

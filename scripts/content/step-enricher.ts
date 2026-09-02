@@ -120,7 +120,7 @@ const ACTION_RULES: readonly [ActionKind, RegExp][] = [
   ['pan-fry', /(煎|烙|煎至|煎熟)/u],
   ['steam', /(蒸|上汽|蒸熟|蒸制)/u],
   ['bake', /(烤箱|烘烤|烤制|烤至|烤熟)/u],
-  ['boil', /(烧开|煮沸|煮开|焯水|汆烫|水开|煮至|煮熟|下锅煮)/u],
+  ['boil', /(烧开|煮沸|煮开|焯水|汆烫|水开|煮至|煮熟|下锅煮|煮)/u],
   ['rest', /(腌|浸泡|泡发|泡软|泡入|醒发|静置|冷藏|冷却|晾凉|发酵|松弛)/u],
   ['serve', /(装盘|出锅|盛出|享用|撒上|点缀|摆盘)/u],
 ];
@@ -173,6 +173,16 @@ export const parseDurationSeconds = (instruction: string): readonly [number, num
     }
   }
 
+  const adjacentRange = /([一二两三四五六七八九])([二三四五六七八九])\s*(秒钟?|分钟?|小时|个小时)/u.exec(normalized);
+  if (adjacentRange !== null) {
+    const first = chineseInteger(adjacentRange[1] ?? '');
+    const second = chineseInteger(adjacentRange[2] ?? '');
+    const unit = adjacentRange[3] ?? '';
+    if (first !== undefined && second !== undefined) {
+      return [boundedSeconds(secondsFor(Math.min(first, second), unit)), boundedSeconds(secondsFor(Math.max(first, second), unit))];
+    }
+  }
+
   const single = /([\d.]+|[一二两三四五六七八九十]+)\s*(秒钟?|分钟?|小时|个小时)\s*(?:左右|以上|以内|即可|后)?/u.exec(normalized);
   if (single === null) return undefined;
   const value = chineseInteger(single[1] ?? '');
@@ -220,9 +230,10 @@ const foodSpecificGuidance = (
   base: Guidance,
 ): Guidance => {
   const foods = `${instruction}${ingredientNames.join('')}`;
+  const meatFoods = foods.replace(/(?:鸡|鸭|鹅|鹌鹑)?蛋(?:液|黄|白)?/gu, '');
   let cue = base.cue;
   let safety = base.safety;
-  if (action !== 'prep' && action !== 'rest' && action !== 'serve' && MEAT_PATTERN.test(foods)) {
+  if (action !== 'prep' && action !== 'rest' && action !== 'serve' && MEAT_PATTERN.test(meatFoods)) {
     cue = `${cue}；肉类切开后中心无血水、颜色一致`;
   }
   if (action !== 'prep' && action !== 'rest' && action !== 'serve' && SEAFOOD_PATTERN.test(foods)) {

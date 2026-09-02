@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -8,7 +9,14 @@ import { appRoutes } from './router'
 
 const renderRoute = (path: string) => {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] })
-  return render(<RouterProvider router={router} />)
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
 }
 
 afterEach(() => {
@@ -53,11 +61,10 @@ describe('AppShell', () => {
 
   it('provides every planned route through the shared application shell', () => {
     const routeExpectations = [
-      ['/recipes/tomato-eggs', '食谱教程'],
-      ['/inventory', '看看冰箱里有什么'],
-      ['/shopping', '购物清单'],
-      ['/assistant', '和小厨 AI 通话'],
-      ['/my', '我的厨房'],
+      ['/inventory', '把手边食材变成可做的菜'],
+      ['/shopping', '缺什么，一次买齐'],
+      ['/assistant', '做饭卡住时，问小厨'],
+      ['/my', '本地收藏与记录'],
       ['/settings/providers', '模型与密钥'],
     ] as const
 
@@ -67,6 +74,11 @@ describe('AppShell', () => {
         .toBeInTheDocument()
       view.unmount()
     }
+
+    const detailView = renderRoute('/recipes/tomato-eggs')
+    expect(screen.getByRole('status', { name: '正在加载完整食谱' }))
+      .toBeInTheDocument()
+    detailView.unmount()
   })
 
   it('does not render a fixed pixel width wider than a 360px viewport', () => {
@@ -84,7 +96,7 @@ describe('AppShell', () => {
       })
 
     expect(overflowingElement).toBeUndefined()
-    expect(container.querySelectorAll('[data-media-ratio="4:3"]'))
-      .toHaveLength(4)
+    expect(container.querySelectorAll('.catalog-skeleton__media'))
+      .toHaveLength(10)
   })
 })

@@ -2,12 +2,13 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveAppPaths } from '../config.js';
@@ -39,9 +40,11 @@ describe('openDatabase', () => {
     expect(db.pragma('busy_timeout', { simple: true })).toBe(5000);
     expect(db.pragma('synchronous', { simple: true })).toBe(1);
     expect(db.pragma('secure_delete', { simple: true })).toBe(1);
+    const migrationCount = readdirSync(join(dirname(fileURLToPath(import.meta.url)), 'migrations'))
+      .filter((name) => name.endsWith('.sql')).length;
     expect(
       db.prepare('select count(*) as count from schema_migrations').get(),
-    ).toEqual({ count: 1 });
+    ).toEqual({ count: migrationCount });
     db.close();
   });
 

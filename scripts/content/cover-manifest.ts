@@ -15,6 +15,28 @@ export const coverManifestRowSchema = z.object({
 
 export type CoverManifestRow = z.infer<typeof coverManifestRowSchema>;
 
+export const createSerializedCoverManifestWriter = <T>(
+  writeSnapshot: (rows: readonly T[]) => Promise<void>,
+): ((rows: Iterable<T>) => Promise<void>) => {
+  let tail: Promise<void> = Promise.resolve();
+  return (rows: Iterable<T>): Promise<void> => {
+    const snapshot = [...rows];
+    const write = tail.then(() => writeSnapshot(snapshot));
+    tail = write.catch(() => undefined);
+    return write;
+  };
+};
+
+const RETIRED_COVER_HOSTS = new Set(['res.hoto.cn', 'res1.hoto.cn']);
+
+export const isRetiredCoverUrl = (value: string): boolean => {
+  try {
+    return RETIRED_COVER_HOSTS.has(new URL(value).hostname.toLocaleLowerCase('en-US'));
+  } catch {
+    return true;
+  }
+};
+
 export const readCoverManifest = async (
   filePath: string,
 ): Promise<Map<string, CoverManifestRow>> => {
