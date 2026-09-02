@@ -53,7 +53,10 @@ export class TurnController {
         }
         this.onState('idle');
       }
-      if (frame.type === 'turn.error') this.onState('error');
+      if (frame.type === 'turn.error') {
+        this.onState('error');
+        throw new Error(frame.error.message);
+      }
     }
   }
 

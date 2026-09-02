@@ -3,7 +3,7 @@
 .kitchen-panel h2, .kitchen-panel h3, .kitchen-panel p { margin: 0; }
 .eyebrow { color: var(--color-accent); font-size: .8rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .inline-fields { align-items: end; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.inline-fields input, .inline-fields select, .kitchen-panel textarea, .kitchen-panel > label > select, .kitchen-panel > label > input { background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: .7rem; color: inherit; font: inherit; min-height: 2.75rem; padding: .55rem .7rem; }
+.inline-fields input, .inline-fields select, .kitchen-panel textarea, .kitchen-panel > label > select, .kitchen-panel > label > input, .assistant-model-picker select { background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: .7rem; color: inherit; font: inherit; min-height: 2.75rem; padding: .55rem .7rem; }
 .inline-fields input { flex: 1 1 8rem; }
 .inline-fields select { flex: 0 1 7rem; }
 .kitchen-panel button, .action-row button { background: var(--color-accent); border: 0; border-radius: .7rem; color: #fff; cursor: pointer; font: inherit; font-weight: 700; min-height: 2.75rem; padding: .55rem .85rem; }
@@ -23,6 +23,9 @@
 .candidate-card { display: grid; gap: .55rem; }
 .candidate-card__reasons { color: var(--color-danger); font-size: .86rem; }
 .action-row { align-items: center; display: flex; gap: 1rem; justify-content: flex-end; }
+.assistant-model-picker { align-items: end; display: flex; flex-wrap: wrap; gap: .75rem; }
+.assistant-model-picker label { display: grid; flex: 1 1 16rem; gap: .35rem; }
+.assistant-model-picker__manage { border: 1px solid var(--color-border); border-radius: .7rem; color: inherit; font-weight: 700; min-height: 2.75rem; padding: .65rem .85rem; text-decoration: none; }
 .hint { color: var(--color-muted); font-size: .88rem; }
 .check-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
 .check-grid label { align-items: center; display: flex; gap: .35rem; }

@@ -3,6 +3,7 @@ import { pendingActionPreviewSchema } from './pending-action.js'
 export const contextSelectionSchema = z.object({ recipeId: z.string().min(1).max(100).optional(), includeInventory: z.boolean().default(false), includeShopping: z.boolean().default(false) }).strict()
 export const voiceTurnInputSchema = z.object({ turnId: z.string().uuid(), text: z.string().trim().min(1).max(8000), context: contextSelectionSchema }).strict()
 export const createVoiceSessionInputSchema = z.object({ providerId: z.string().uuid(), context: contextSelectionSchema.default({ includeInventory: false, includeShopping: false }) }).strict()
+export const changeVoiceSessionProviderInputSchema = z.object({ providerId: z.string().uuid() }).strict()
 export const voiceSessionIdParamsSchema = z.object({ sessionId: z.string().uuid() }).strict()
 export type ContextSelection = z.infer<typeof contextSelectionSchema>
 export type VoiceFrame =

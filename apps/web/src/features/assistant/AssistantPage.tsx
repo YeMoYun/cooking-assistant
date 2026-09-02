@@ -27,6 +27,7 @@ export const AssistantPage = () => {
   const [lines, setLines] = useState<Line[]>([]);
   const [drafts, setDrafts] = useState<PendingActionPreview[]>([]);
   const [state, setState] = useState<AssistantTurnState>('idle');
+  const [switchingProvider, setSwitchingProvider] = useState(false);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string>();
   const controller = useRef<TurnController | undefined>(undefined);
@@ -75,10 +76,38 @@ export const AssistantPage = () => {
       controller.current = next;
       await next.start(question, context);
     } catch (caught) {
+      setLines((current) => {
+        const last = current.at(-1);
+        return last?.role === 'assistant' && last.text === ''
+          ? current.slice(0, -1)
+          : current;
+      });
       if ((caught as DOMException).name !== 'AbortError') {
         setError(caught instanceof Error ? caught.message : '智能助手暂时不可用。');
         setState('error');
       }
+    }
+  };
+
+  const changeProvider = async (nextProviderId: string): Promise<void> => {
+    if (nextProviderId === providerId) return;
+    if (sessionId === undefined) {
+      setProviderId(nextProviderId);
+      return;
+    }
+    setSwitchingProvider(true);
+    setError(undefined);
+    try {
+      await apiClient.request(`/api/voice/sessions/${sessionId}/provider`, {
+        method: 'PATCH',
+        body: { providerId: nextProviderId },
+        signal: new AbortController().signal,
+      });
+      setProviderId(nextProviderId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '模型切换失败。');
+    } finally {
+      setSwitchingProvider(false);
     }
   };
 
@@ -113,11 +142,18 @@ export const AssistantPage = () => {
         <p>食谱教程仍在菜谱页；这里用于解决当前的火候、调味和补救问题。</p>
       </header>
       <section className="kitchen-panel">
-        <label>文本模型
-          <select onChange={(event) => { setProviderId(event.target.value); setSessionId(undefined); }} value={providerId}>
-            {providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.name} · {provider.modelId}</option>)}
-          </select>
-        </label>
+        <div className="assistant-model-picker">
+          <label>文本模型
+            <select
+              disabled={switchingProvider || state === 'thinking' || state === 'speaking'}
+              onChange={(event) => { void changeProvider(event.target.value); }}
+              value={providerId}
+            >
+              {providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.name} · {provider.modelId}</option>)}
+            </select>
+          </label>
+          <Link className="assistant-model-picker__manage" to="/settings/providers">添加或管理模型</Link>
+        </div>
         {providers.length === 0 && <p>没有可用文本模型。<Link to="/settings/providers">配置 DeepSeek、通义千问或自定义模型</Link>。</p>}
         <ContextPicker onChange={setContext} value={context} />
         <p className="assistant-disclosure">首次使用语音输入前请知悉：Chrome/Edge 的语音识别可能调用浏览器厂商的在线服务；本应用不会保存原始音频。</p>

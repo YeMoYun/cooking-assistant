@@ -1,5 +1,6 @@
 import {
   AppError,
+  changeVoiceSessionProviderInputSchema,
   createVoiceSessionInputSchema,
   pendingActionPreviewSchema,
   voiceSessionIdParamsSchema,
@@ -9,7 +10,7 @@ import type Database from 'better-sqlite3';
 import type { FastifyInstance } from 'fastify';
 import { ProviderRepository } from '../providers/provider-repository.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
-import { JsonModelClient } from '../providers/json-model-client.js';
+import { JsonModelClient, ModelClientError } from '../providers/json-model-client.js';
 import type { SecretStore } from '../providers/secret-store.js';
 import { createDraftNoteTool } from '../tools/draft-note-tool.js';
 import { createDraftShoppingItemsTool } from '../tools/draft-shopping-items-tool.js';
@@ -20,13 +21,31 @@ import { ROUTE_SECURITY_CONFIGS } from '../../plugins/request-security.js';
 import { ActiveTurns } from './active-turns.js';
 import { AgentOrchestrator } from './agent-orchestrator.js';
 import { buildAuthorizedContext } from './context-builder.js';
+import { bindStreamCancellation } from './stream-lifecycle.js';
 import { VoiceRepository } from './voice-repository.js';
 
-const streamError = (cancelled: boolean): { readonly code: string; readonly message: string } => (
-  cancelled
-    ? { code: 'cancelled', message: 'The response was interrupted.' }
-    : { code: 'voice_turn_failed', message: 'The assistant is temporarily unavailable.' }
-);
+const modelErrorMessages = {
+  auth: '鉴权失败，请重新输入 API Key',
+  model_not_found: '当前 Model ID 不存在',
+  quota: '模型服务额度或余额不足',
+  rate_limited: '模型服务请求过于频繁，请稍后重试',
+  timeout: '模型服务连接超时',
+  protocol: '模型服务返回了不兼容的协议内容',
+  upstream: '模型服务暂时不可用',
+  cancelled: '模型服务请求已取消',
+  unknown: '模型服务连接失败',
+} as const;
+
+const streamError = (
+  error: unknown,
+  cancelled: boolean,
+): { readonly code: string; readonly message: string } => {
+  if (cancelled) return { code: 'cancelled', message: '回复已被中断' };
+  if (error instanceof ModelClientError) {
+    return { code: error.code, message: modelErrorMessages[error.code] };
+  }
+  return { code: 'voice_turn_failed', message: '智能助手暂时不可用，请稍后重试' };
+};
 
 export const registerVoiceRoutes = (
   app: FastifyInstance,
@@ -74,6 +93,24 @@ export const registerVoiceRoutes = (
     return { data: { ended: true } };
   });
 
+  app.patch('/api/voice/sessions/:sessionId/provider', {
+    config: ROUTE_SECURITY_CONFIGS.confirmation,
+  }, (request) => {
+    const sessionId = voiceSessionIdParamsSchema.parse(request.params).sessionId;
+    const body = changeVoiceSessionProviderInputSchema.parse(request.body);
+    const profile = providers.get(body.providerId);
+    if (profile === undefined || !profile.enabled || profile.kind !== 'text') {
+      throw new AppError('provider_unavailable', '请选择一个已启用的文本模型', 409);
+    }
+    return {
+      data: sessions.changeProvider(sessionId, {
+        providerId: profile.id,
+        providerName: profile.name,
+        modelId: profile.modelId,
+      }),
+    };
+  });
+
   app.post('/api/voice/sessions/:sessionId/turns', {
     config: ROUTE_SECURITY_CONFIGS.modelStream,
   }, async (request, reply) => {
@@ -84,9 +121,11 @@ export const registerVoiceRoutes = (
       throw new AppError('voice_session_ended', 'The conversation has ended.', 409);
     }
     const active = activeTurns.begin(sessionId);
-    const abortOnClose = (): void => active.abort(new Error('Client disconnected'));
-    request.raw.once('aborted', abortOnClose);
-    request.raw.once('close', abortOnClose);
+    const removeCancellationListeners = bindStreamCancellation(
+      request.raw,
+      reply.raw,
+      active,
+    );
     reply.hijack();
     reply.raw.writeHead(200, {
       'cache-control': 'no-store',
@@ -127,7 +166,7 @@ export const registerVoiceRoutes = (
       }
       const messageId = sessions.message(sessionId, body.turnId, sequence, 'assistant', answer);
       send({ type: 'turn.finished', messageId });
-    } catch {
+    } catch (error) {
       sessions.message(
         sessionId,
         body.turnId,
@@ -136,10 +175,9 @@ export const registerVoiceRoutes = (
         answer,
         active.signal.aborted ? 'cancelled' : 'error',
       );
-      send({ type: 'turn.error', error: streamError(active.signal.aborted) });
+      send({ type: 'turn.error', error: streamError(error, active.signal.aborted) });
     } finally {
-      request.raw.off('aborted', abortOnClose);
-      request.raw.off('close', abortOnClose);
+      removeCancellationListeners();
       activeTurns.finish(sessionId, active);
       if (!reply.raw.writableEnded) reply.raw.end();
     }
